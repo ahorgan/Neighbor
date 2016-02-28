@@ -14,20 +14,21 @@ import java.util.Map;
  * Created by annika on 2/21/16.
  */
 public class Neighbor {
-    private static String TAG = "Neighbor.java"
-    private static String MAC = "mac_address";
-    private static String NAME = "name";
-    private static String GATEWAY = "gateway";
+    public static String DB_NAME = "neighbordb";
+    private static String TAG = "Neighbor.java";
+    public static String MAC = "mac_address";
+    public static String NAME = "name";
+    public static String GATEWAY = "gateway";
     private Neighbor mGateway;
     private String mMacAddress;
     private String mName;
     private String documentID;
-    private ArrayList<Post> posts;
+    private ArrayList<Packet> packets;
     private Map<String, Object> mData;
     private static dbInterface db;
 
     public Neighbor(Context context, String name, String macAddress) {
-        db = new dbInterface(context, "NeighborDB");
+        db = new dbInterface(context, DB_NAME);
         this.mName = name;
         this.mMacAddress = macAddress;
         mData = new HashMap<>();
@@ -37,33 +38,28 @@ public class Neighbor {
     }
 
     public Neighbor(Context context, String docID) {
-        db = new dbInterface(context, "NeighborDB");
-        Document document
+        db = new dbInterface(context, DB_NAME);
+        Document document;
         if((document = db.getDocument(docID)) != null) {
             documentID = docID;
             Map<String, Object> data = new HashMap<>();
-            try {
-                document.putProperties(data);
-                this.mName = data.get(NAME).toString();
-                this.mMacAddress = data.get(MAC).toString();
-            }
-            catch(CouchbaseLiteException e) {
-                Log.e(TAG, e.getMessage());
-            }
+            data.putAll(document.getProperties());
+            this.mName = data.get(NAME).toString();
+            this.mMacAddress = data.get(MAC).toString();
         }
     }
 
-    public ArrayList<Post> addPost(Post p) {
-        posts.add(p);
-        return posts;
+    public ArrayList<Packet> addPost(Packet p) {
+        packets.add(p);
+        return packets;
     }
 
     public void updateGateway(Neighbor gateway){
         mGateway = gateway;
         Map<String, Object> newData = new HashMap<String, Object>();
+        newData.putAll(db.getDocument(documentID).getProperties());
         newData.put(GATEWAY, gateway.getID());
-        mData = db.addData(this.documentID, newData);
-    }
+        mData = db.addData(this.documentID, newData);    }
 
     public void updateName(String name){
         mName = name;
@@ -85,6 +81,28 @@ public class Neighbor {
         mData = db.addData(this.documentID, newData);
     }
 
+    public boolean delete() {
+        Document document;
+        try {
+            document = db.getDocument(this.documentID);
+            document.delete();
+            return document.isDeleted();
+        }
+        catch(CouchbaseLiteException e) {
+            Log.e(TAG, e.getMessage());
+        }
+        return false;
+    }
+
+    public void purge() {
+        try {
+            db.getDocument(this.documentID).purge();
+        }
+        catch(CouchbaseLiteException e) {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+
     public Neighbor getGateway() {
         return mGateway;
     }
@@ -101,8 +119,8 @@ public class Neighbor {
         return documentID;
     }
 
-    public ArrayList<Post> getPosts() {
-        return posts;
+    public ArrayList<Packet> getPackets() {
+        return packets;
     }
 
     public Map<String, Object> getDataCollection() {

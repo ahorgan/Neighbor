@@ -28,8 +28,8 @@ public class dbInterface {
     private static Database database = null;
     private static Manager manager = null;
 
-    public dbInterface(Context context, String dbName) {
-        DB_NAME = dbName;
+    public dbInterface(Context context, String name) {
+        DB_NAME = name;
         try {
             this.getManagerInstance(context);
             this.getDatabaseInstance();
@@ -44,13 +44,13 @@ public class dbInterface {
     public String getDbName() {
         return DB_NAME;
     }
-    public Database getDatabaseInstance() throws CouchbaseLiteException {
-        if ((this.database == null) & (this.manager != null)) {
-            this.database = manager.getDatabase(DB_NAME);
+    public static Database getDatabaseInstance() throws CouchbaseLiteException {
+        if ((database == null) & (manager != null)) {
+            database = manager.getDatabase(DB_NAME);
         }
         return database;
     }
-    public Manager getManagerInstance(Context context) throws IOException {
+    public static Manager getManagerInstance(Context context) throws IOException {
         if (manager == null) {
             manager = new Manager(new AndroidContext(context), Manager.DEFAULT_OPTIONS);
         }
@@ -114,7 +114,7 @@ public class dbInterface {
             Document document = getDatabaseInstance().getDocument(documentId);
             ByteArrayInputStream inputStream = new ByteArrayInputStream(new byte[] { 0, 0, 0, 0 });
             UnsavedRevision revision = document.getCurrentRevision().createRevision();
-            revision.setAttachment("binaryData", "application/octet-stream", //MIME type inputStream);
+            revision.setAttachment("binaryData", "application/octet-stream", inputStream);
         /* Save doc & attachment to the local DB */
                     revision.save();
         } catch (CouchbaseLiteException e) {
@@ -134,7 +134,12 @@ public class dbInterface {
             while (i++ < 4) {
                 // We knew the size of the byte array
                 // This is the content of the attachment
-                values.append(reader.read() + " ");
+                try {
+                    values.append(reader.read() + " ");
+                }
+                catch(IOException e) {
+
+                }
             }
             Log.v(TAG, "The docID: " + documentID + ", attachment contents was: " + values.toString());
             return attach;
@@ -146,3 +151,4 @@ public class dbInterface {
     }
 
 }
+
