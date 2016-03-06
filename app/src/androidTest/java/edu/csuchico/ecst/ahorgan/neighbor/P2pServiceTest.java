@@ -7,6 +7,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.rule.ServiceTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.util.Log;
 import android.util.Pair;
 
 import org.junit.Before;
@@ -24,7 +25,7 @@ import static org.junit.Assert.assertThat;
 @RunWith(AndroidJUnit4.class)
 @SmallTest
 public class P2pServiceTest {
-
+    private static final String TAG = "P2pServiceTest";
     public static final String TEST_STRING = "This is a string";
     public static final long TEST_LONG = 12345678L;
     private P2pService mService;
@@ -34,6 +35,7 @@ public class P2pServiceTest {
 
     @Test
     public void testWithBoundService() throws TimeoutException {
+        Log.d(TAG, "testWithBoundService called");
         // Create the service Intent.
         Intent serviceIntent =
                 new Intent(InstrumentationRegistry.getTargetContext(),

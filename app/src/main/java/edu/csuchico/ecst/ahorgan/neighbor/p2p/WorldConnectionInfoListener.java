@@ -31,6 +31,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
     private WifiP2pDeviceList mDeviceList;
     private WifiP2pConfig mConfig;
     private WifiP2pManager.GroupInfoListener mGroupInfoListener;
+    private WifiP2pDevice thisDevice;
 
     public WorldConnectionInfoListener(Context context) {
         mContext = context;
@@ -92,5 +93,11 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                 }
             });
         }
+    }
+
+    public void setThisDevice(WifiP2pDevice device) {
+        thisDevice = device;
+        Log.d(TAG, "This Device: Name=" + thisDevice.deviceName +
+                " Addr=" + thisDevice.deviceAddress);
     }
 }

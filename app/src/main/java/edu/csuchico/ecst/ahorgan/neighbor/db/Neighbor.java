@@ -29,8 +29,8 @@ public class Neighbor {
 
     public Neighbor(Context context, String name, String macAddress) {
         db = new dbInterface(context, DB_NAME);
-        this.mName = name;
-        this.mMacAddress = macAddress;
+        mName = name;
+        mMacAddress = macAddress;
         mData = new HashMap<>();
         mData.put(NAME, mName);
         mData.put(MAC, macAddress);

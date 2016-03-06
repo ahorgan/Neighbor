@@ -8,8 +8,10 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Binder;
 import android.os.IBinder;
+import android.util.Log;
 
 public class P2pService extends Service {
+    private static final String TAG = "P2pService";
     private WorldConnectionInfoListener mWorld;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
@@ -34,6 +36,7 @@ public class P2pService extends Service {
 
     @Override
     public void onCreate() {
+        Log.d(TAG, "onCreate() called");
         mWorld = new WorldConnectionInfoListener(getApplicationContext());
         mManager = mWorld.getManager();
         mChannel = mWorld.getChannel();
@@ -58,11 +61,13 @@ public class P2pService extends Service {
     /* unregister the broadcast receiver */
     @Override
     public void onDestroy() {
-
-        //unregisterReceiver(mReceiver);
+        if(mReceiver != null) {
+            unregisterReceiver(mReceiver);
+        }
     }
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind() Called");
         registerReceiver(mReceiver, mIntentFilter);
         return mBinder;
     }
