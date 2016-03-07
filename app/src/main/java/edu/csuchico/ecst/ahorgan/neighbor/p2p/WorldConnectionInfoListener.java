@@ -58,6 +58,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
     @Override
     public void onConnectionInfoAvailable(WifiP2pInfo info) {
         if(info.groupFormed) {
+            mManager.requestGroupInfo(mChannel, mGroupInfoListener);
             /*
                 Start exchanging packets using group owner as router
              */
@@ -71,7 +72,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             }
         }
         else {
-            mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+            WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
                     Log.d(TAG, "Discover Peers Turned On");
@@ -90,8 +91,10 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                             Log.d(TAG, "Discover Peers: Error");
                             break;
                     }
+                    mManager.discoverPeers(mChannel, this);
                 }
-            });
+            };
+            mManager.discoverPeers(mChannel, actionListener);
         }
     }
 

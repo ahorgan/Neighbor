@@ -14,12 +14,17 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private WorldGroupInfoListener mGroupListener;
+    private WorldConnectionInfoListener mConnectionListener;
 
-    WorldPeerListener(WifiP2pManager manager, WifiP2pManager.Channel channel, WorldGroupInfoListener groupListener) {
+    WorldPeerListener(WifiP2pManager manager,
+                      WifiP2pManager.Channel channel,
+                      WorldGroupInfoListener groupListener,
+                      WorldConnectionInfoListener connectionListener) {
         super();
         mManager = manager;
         mChannel = channel;
         mGroupListener = groupListener;
+        mConnectionListener = connectionListener;
     }
 
     public void setChannel(WifiP2pManager.Channel channel) {
@@ -34,18 +39,30 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
     public WifiP2pManager getManager() {    return mManager;    }
 
     public void onPeersAvailable(WifiP2pDeviceList peers) {
-        mManager.createGroup(mChannel, new WifiP2pManager.ActionListener() {
+        Log.d(TAG, "Peers Available");
+        WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
                 Log.d(TAG, "Create Group: Success!");
-                mManager.requestGroupInfo(mChannel, mGroupListener);
+                mManager.requestConnectionInfo(mChannel, mConnectionListener);
             }
 
             @Override
             public void onFailure(int reason) {
-                Log.d(TAG, "Create Groupe: Error " + reason);
+                switch(reason) {
+                    case WifiP2pManager.P2P_UNSUPPORTED:
+                        Log.d(TAG, "Create Group P2P Unsupported");
+                        break;
+                    case WifiP2pManager.BUSY:
+                        Log.d(TAG, "Create Group Manager Busy");
+                        break;
+                    case WifiP2pManager.ERROR:
+                        Log.d(TAG, "Create Group Error");
+                        break;
+                }
             }
-        });
+        };
+        mManager.createGroup(mChannel, actionListener);
     }
 
     public void connectPeers(WifiP2pDevice device) {

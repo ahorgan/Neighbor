@@ -1,6 +1,7 @@
 package edu.csuchico.ecst.ahorgan.neighbor.p2p;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.p2p.WifiP2pConfig;
@@ -41,41 +42,42 @@ public class P2pService extends Service {
         mManager = mWorld.getManager();
         mChannel = mWorld.getChannel();
         mGroupListener = new WorldGroupInfoListener(mManager, mChannel, mWorld);
-        mPeerListener = new WorldPeerListener(mManager, mChannel, mGroupListener);
+        mPeerListener = new WorldPeerListener(mManager, mChannel, mGroupListener, mWorld);
         mReceiver = new WifiP2pBroadcastReceiver(mManager, mChannel, this);
         mIntentFilter = new IntentFilter();
-        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        //mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-        mManager.requestConnectionInfo(mChannel, mWorld);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // The service is starting, due to a call to startService()
+        registerReceiver(mReceiver, mIntentFilter);
+        mManager.requestConnectionInfo(mChannel, mWorld);
         return mStartMode;
     }
-
 
     /* unregister the broadcast receiver */
     @Override
     public void onDestroy() {
-        if(mReceiver != null) {
-            unregisterReceiver(mReceiver);
-        }
+        //if(mReceiver != null) {
+            //unregisterReceiver(mReceiver);
+        //}
     }
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind() Called");
-        registerReceiver(mReceiver, mIntentFilter);
+        //registerReceiver(mReceiver, mIntentFilter);
         return mBinder;
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         // All clients have unbound with unbindService()
-        //unregisterReceiver(mReceiver);
+        //if(mReceiver != null)
+          //unregisterReceiver(mReceiver);
         return mAllowRebind;
     }
     @Override
@@ -84,7 +86,6 @@ public class P2pService extends Service {
         // after onUnbind() has already been called
         //registerReceiver(mReceiver, mIntentFilter);
     }
-
 
     public WorldPeerListener getPeerListener() {    return mPeerListener;   }
     public WorldConnectionInfoListener getConnectionInfoListener() {    return mWorld;  }
