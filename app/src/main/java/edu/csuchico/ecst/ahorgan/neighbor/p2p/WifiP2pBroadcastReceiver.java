@@ -31,101 +31,42 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private P2pService mService;
-    
+
     private WifiP2pManager.PeerListListener mPeerListListener;
     private WorldConnectionInfoListener mConnectionInfoListener;
 
     private ServiceConnection mConnection;
 
-    public WifiP2pBroadcastReceiver(WifiP2pManager manager,
-                                    WifiP2pManager.Channel channel,
-                                    P2pService service) {
-        mManager = manager;
-        mChannel = channel;
-        mService = service;
+    public WifiP2pBroadcastReceiver() {
+        super();
     }
 
 
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-
-            // request available peers from the wifi p2p manager. This is an
-            // asynchronous call and the calling activity is notified with a
-            // callback on PeerListListener.onPeersAvailable()
+        Intent new_intent = new Intent(context, P2pService.class);
+        if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
+            // Determine if Wifi P2P mode is enabled or not, alert
+            // the Activity.
+            Log.d(TAG, "Wifi P2P State Changed Action");
+            new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_STATE, intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1));
+        }
+        else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Peers Changed Action");
-            if (mManager != null && mService != null) {
-                Log.d(TAG, "Requesting Peers");
-                mManager.requestPeers(mChannel, mService.getPeerListener());
-            }
-
-
+            new_intent.putExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST, intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST));
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
             // Connection state changed!  We should probably do something about
             // that.
-            if(mService != null) {
-                NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-                if(info.isConnected()) {
-                    Log.d(TAG, "Connection Type: " + info.getTypeName());
-                    mManager.requestConnectionInfo(mChannel, mService.getConnectionInfoListener());
-                }
-                else {
-                    NetworkInfo.DetailedState state = info.getDetailedState();
-                    if(state == NetworkInfo.DetailedState.AUTHENTICATING) {
-                        Log.d(TAG, "Authenticating");
-                    }
-                    else if(state == NetworkInfo.DetailedState.BLOCKED) {
-                        Log.d(TAG, "Blocked");
-                    }
-                    else if(state == NetworkInfo.DetailedState.CONNECTING) {
-                        Log.d(TAG, "Connecting");
-                    }
-                    else if(state == NetworkInfo.DetailedState.DISCONNECTED) {
-                        Log.d(TAG, "Disconnected");
-                    }
-                    else if(state == NetworkInfo.DetailedState.DISCONNECTING) {
-                        Log.d(TAG, "Disconnecting");
-                    }
-                    else if(state == NetworkInfo.DetailedState.FAILED) {
-                        Log.d(TAG, "Failed");
-                    }
-                    else if(state == NetworkInfo.DetailedState.IDLE) {
-                        Log.d(TAG, "Idle");
-                    }
-                    else if(state == NetworkInfo.DetailedState.OBTAINING_IPADDR) {
-                        Log.d(TAG, "Obtaining IP Address");
-                    }
-                    else if(state == NetworkInfo.DetailedState.SCANNING) {
-                        Log.d(TAG, "Scanning");
-                    }
-                    else if(state == NetworkInfo.DetailedState.SUSPENDED) {
-                        Log.d(TAG, "Suspended");
-                    }
-                    else {
-                        // Possibly captive portal, whatever that means
-                        Log.d(TAG, "Disconnected: Unknown Reason");
-                    }
-                }
-            }
+            new_intent.putExtra(WifiP2pManager.EXTRA_NETWORK_INFO, intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO));
         }
         else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P This Device Changed Action");
-            WifiP2pDevice thisDevice = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
-            if(mService != null)
-                mService.getConnectionInfoListener().setThisDevice(thisDevice);
+            new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
 
         }
-        else if (WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION.equals(action)) {
-            int state = intent.getIntExtra(WifiP2pManager.EXTRA_DISCOVERY_STATE, -1);
-            if(state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED) {
-                Log.d(TAG, "Wifi P2P Discovery Started");
-            }
-            else if(state == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED){
-                Log.d(TAG, "Wifi P2P Discovery Stopped");
-            }
-        }
+        context.startService(new_intent);
     }
 }

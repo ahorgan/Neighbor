@@ -5,9 +5,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Binder;
 import android.os.IBinder;
@@ -23,6 +25,7 @@ public class P2pService extends Service {
     private IntentFilter mIntentFilter;
     private WorldGroupInfoListener mGroupListener;
     private  WorldPeerListener mPeerListener;
+    private WifiP2pDeviceList currentList;
     private boolean mAllowRebind; // indicates whether onRebind should be used
     private boolean receiverRegistered;
     private boolean initialized = false;
@@ -61,13 +64,6 @@ public class P2pService extends Service {
         mWorld.setGroupInfoListener(mGroupListener);
         mPeerListener = new WorldPeerListener(this, mManager, mChannel, mGroupListener, mWorld);
         mWorld.setPeerListListener(mPeerListener);
-        mReceiver = new WifiP2pBroadcastReceiver(mManager, mChannel, this);
-        mIntentFilter = new IntentFilter();
-        //mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-        receiverRegistered = false;
         initialized = true;
     }
 
@@ -77,32 +73,20 @@ public class P2pService extends Service {
         // The service is starting, due to a call to startService()
         if(!initialized)
             initialize();
-        if(!receiverRegistered) {
-            registerReceiver(mReceiver, mIntentFilter);
-            receiverRegistered = true;
-        }
-        turnDiscoverOn();
-        return mStartMode;
+        processAction(intent);
+        return START_REDELIVER_INTENT;
     }
 
     /* unregister the broadcast receiver */
     @Override
     public void onDestroy() {
-        if(receiverRegistered) {
-            unregisterReceiver(mReceiver);
-            receiverRegistered = false;
-        }
+
     }
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind() Called");
         if(!initialized)
             initialize();
-        Log.d(TAG, "onBind() Called");
-
-        if(!receiverRegistered) {
-            registerReceiver(mReceiver, mIntentFilter);
-            receiverRegistered = true;
-        }
         turnDiscoverOn();
         return mBinder;
     }
@@ -110,10 +94,7 @@ public class P2pService extends Service {
     @Override
     public boolean onUnbind(Intent intent) {
         // All clients have unbound with unbindService()
-        if(mReceiver != null && receiverRegistered) {
-            unregisterReceiver(mReceiver);
-            receiverRegistered = false;
-        }
+
         return mAllowRebind;
     }
     @Override
@@ -121,6 +102,89 @@ public class P2pService extends Service {
         // A client is binding to the service with bindService(),
         // after onUnbind() has already been called
         //registerReceiver(mReceiver, mIntentFilter);
+    }
+
+    public void processAction(Intent intent) {
+        String action = intent.getAction();
+        if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
+            // Determine if Wifi P2P mode is enabled or not, alert
+            // the Activity.
+            int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
+            if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
+                Log.d(TAG, "Wifi P2P State Enabled");
+                turnDiscoverOn();
+
+            }
+            else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED){
+                Log.d(TAG, "Wifi P2P State Disabled");
+                turnDiscoverOff();
+            }
+        }
+        else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
+            // request available peers from the wifi p2p manager. This is an
+            // asynchronous call and the calling activity is notified with a
+            // callback on PeerListListener.onPeersAvailable()
+            Log.d(TAG, "Wifi P2P Peers Changed Action");
+            WifiP2pDeviceList peers = intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST);
+            if(currentList != peers) {
+                Log.d(TAG, "Requesting Peers");
+                currentList = peers;
+                mManager.requestPeers(mChannel, mPeerListener);
+            }
+        }
+        else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
+            Log.d(TAG, "Wifi P2P Connection Changed Action");
+            // Connection state changed!  We should probably do something about
+            // that.
+            NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+            if(info.isConnected()) {
+                Log.d(TAG, "Connection Type: " + info.getTypeName());
+                mManager.requestConnectionInfo(mChannel, mWorld);
+            }
+            else {
+                NetworkInfo.DetailedState state = info.getDetailedState();
+                if(state == NetworkInfo.DetailedState.AUTHENTICATING) {
+                    Log.d(TAG, "Authenticating");
+                }
+                else if(state == NetworkInfo.DetailedState.BLOCKED) {
+                    Log.d(TAG, "Blocked");
+                }
+                else if(state == NetworkInfo.DetailedState.CONNECTING) {
+                    Log.d(TAG, "Connecting");
+                }
+                else if(state == NetworkInfo.DetailedState.DISCONNECTED) {
+                    Log.d(TAG, "Disconnected");
+                }
+                else if(state == NetworkInfo.DetailedState.DISCONNECTING) {
+                    Log.d(TAG, "Disconnecting");
+                }
+                else if(state == NetworkInfo.DetailedState.FAILED) {
+                    Log.d(TAG, "Failed");
+                }
+                else if(state == NetworkInfo.DetailedState.IDLE) {
+                    Log.d(TAG, "Idle");
+                }
+                else if(state == NetworkInfo.DetailedState.OBTAINING_IPADDR) {
+                    Log.d(TAG, "Obtaining IP Address");
+                }
+                else if(state == NetworkInfo.DetailedState.SCANNING) {
+                    Log.d(TAG, "Scanning");
+                }
+                else if(state == NetworkInfo.DetailedState.SUSPENDED) {
+                    Log.d(TAG, "Suspended");
+                }
+                else {
+                    // Possibly captive portal, whatever that means
+                    Log.d(TAG, "Disconnected: Unknown Reason");
+                }
+            }
+        }
+        else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
+            Log.d(TAG, "Wifi P2P This Device Changed Action");
+            WifiP2pDevice thisDevice = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
+            mWorld.setThisDevice(thisDevice);
+
+        }
     }
 
     public void turnDiscoverOn() {
@@ -148,6 +212,30 @@ public class P2pService extends Service {
             }
         };
         mManager.discoverPeers(mChannel, actionListener);
+    }
+
+    public void turnDiscoverOff() {
+        mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Stopped Discover");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                switch(reason) {
+                    case WifiP2pManager.BUSY:
+                        Log.d(TAG, "Stopped Discover Failed: Busy");
+                        break;
+                    case WifiP2pManager.P2P_UNSUPPORTED:
+                        Log.d(TAG, "Stopped Discover Failed: P2P Unsupported");
+                        break;
+                    case WifiP2pManager.ERROR:
+                        Log.d(TAG, "Stopped Discover Failed: Error");
+                        break;
+                }
+            }
+        });
     }
 
     public void cancelConnection() {

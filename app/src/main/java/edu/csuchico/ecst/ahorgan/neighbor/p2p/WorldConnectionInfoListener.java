@@ -94,9 +94,11 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
     }
 
     public void setThisDevice(WifiP2pDevice device) {
-        thisDevice = device;
-        Log.d(TAG, "This Device: Name=" + thisDevice.deviceName +
-                " Addr=" + thisDevice.deviceAddress);
+        if(device != null) {
+            thisDevice = device;
+            Log.d(TAG, "This Device: Name=" + thisDevice.deviceName +
+                    " Addr=" + thisDevice.deviceAddress);
+        }
     }
 
     public boolean isGroupFormed() {

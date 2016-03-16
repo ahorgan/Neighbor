@@ -26,11 +26,14 @@
         android:theme="@style/AppTheme"
         android:enabled="true">
         <receiver
-            android:name=".p2p.WifiP2pEnabledBroadcastReceiver"
+            android:name=".p2p.WifiP2pBroadcastReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.net.wifi.p2p.STATE_CHANGED" />
+                <action android:name="android.net.wifi.p2p.PEERS_CHANGED"/>
+                <action android:name="android.net.wifi.p2p.CONNECTION_STATE_CHANGE"/>
+                <action android:name="android.net.wifi.p2p.THIS_DEVICE_CHANGED"/>
             </intent-filter>
         </receiver>
         <activity
