@@ -6,6 +6,9 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by annika on 3/1/16.
  */
@@ -15,16 +18,21 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
     private WifiP2pManager.Channel mChannel;
     private WorldGroupInfoListener mGroupListener;
     private WorldConnectionInfoListener mConnectionListener;
+    private P2pService mService;
+    private List<WifiP2pDevice> peerList;
 
-    WorldPeerListener(WifiP2pManager manager,
+    WorldPeerListener(P2pService service,
+                      WifiP2pManager manager,
                       WifiP2pManager.Channel channel,
                       WorldGroupInfoListener groupListener,
                       WorldConnectionInfoListener connectionListener) {
         super();
+        mService = service;
         mManager = manager;
         mChannel = channel;
         mGroupListener = groupListener;
         mConnectionListener = connectionListener;
+        peerList = new ArrayList<>();
     }
 
     public void setChannel(WifiP2pManager.Channel channel) {
@@ -40,32 +48,45 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
 
     public void onPeersAvailable(WifiP2pDeviceList peers) {
         Log.d(TAG, "Peers Available");
-        WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.d(TAG, "Create Group: Success!");
-                mManager.requestConnectionInfo(mChannel, mConnectionListener);
-            }
-
-            @Override
-            public void onFailure(int reason) {
-                switch(reason) {
-                    case WifiP2pManager.P2P_UNSUPPORTED:
-                        Log.d(TAG, "Create Group P2P Unsupported");
-                        break;
-                    case WifiP2pManager.BUSY:
-                        Log.d(TAG, "Create Group Manager Busy");
-                        break;
-                    case WifiP2pManager.ERROR:
-                        Log.d(TAG, "Create Group Error");
-                        break;
-                }
-            }
-        };
-        mManager.createGroup(mChannel, actionListener);
+        analyzeChange(peers);
     }
 
-    public void connectPeers(WifiP2pDevice device) {
+    public void analyzeChange(WifiP2pDeviceList peers) {
+        // A previous peer list exists, look for added and deleted peers
+        if(peerList.size() > 0 && mConnectionListener.isGroupFormed()) {
+            Log.d(TAG, "Group Exists");
+            if(mConnectionListener.isGroupOwner()) {
+                // Connect new peers
+                for (WifiP2pDevice peer : peers.getDeviceList()) {
+                    if (!peerList.contains(peer)) {
+                        Log.d(TAG, "Connecting to " + peer.deviceName);
+                        connectPeer(peer);
+                    }
+                }
+            }
+            peerList.clear();
+            peerList.addAll(peers.getDeviceList());
+            mConnectionListener.setPeerList(peerList);
+        }
+        else {
+            Log.d(TAG, "Group Does Not Exist");
+            peerList.clear();
+            peerList.addAll(peers.getDeviceList());
+            mConnectionListener.setPeerList(peerList);
+            if(peerList.size() > 0) {
+                Log.d(TAG, "Found Peers");
+                for(WifiP2pDevice device : peerList) {
+                    Log.d(TAG, device.deviceName + " " + device.deviceAddress);
+                }
+                connectPeer(peerList.get(0));
+            }
+            else {
+                Log.d(TAG, "No Peers Found");
+            }
+        }
+    }
+
+    public void connectPeer(WifiP2pDevice device) {
         //obtain a peer from the WifiP2pDeviceList
         WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = device.deviceAddress;
@@ -74,11 +95,23 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
             @Override
             public void onSuccess() {
                 //success logic
+                Log.d(TAG, "Connect Peer Success");
             }
 
             @Override
             public void onFailure(int reason) {
                 //failure logic
+                switch(reason) {
+                    case WifiP2pManager.P2P_UNSUPPORTED:
+                        Log.d(TAG, "Connect Peer P2P Unsupported");
+                        break;
+                    case WifiP2pManager.BUSY:
+                        Log.d(TAG, "Connect Peer Manager Busy");
+                        break;
+                    case WifiP2pManager.ERROR:
+                        Log.d(TAG, "Connect Peer Error");
+                        break;
+                }
             }
         });
 

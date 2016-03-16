@@ -31,6 +31,7 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private P2pService mService;
+    
     private WifiP2pManager.PeerListListener mPeerListListener;
     private WorldConnectionInfoListener mConnectionInfoListener;
 
@@ -65,9 +66,49 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
             // Connection state changed!  We should probably do something about
             // that.
-            NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-            if(networkInfo.isConnected() && mService != null) {
-                mManager.requestConnectionInfo(mChannel, mService.getConnectionInfoListener());
+            if(mService != null) {
+                NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+                if(info.isConnected()) {
+                    Log.d(TAG, "Connection Type: " + info.getTypeName());
+                    mManager.requestConnectionInfo(mChannel, mService.getConnectionInfoListener());
+                }
+                else {
+                    NetworkInfo.DetailedState state = info.getDetailedState();
+                    if(state == NetworkInfo.DetailedState.AUTHENTICATING) {
+                        Log.d(TAG, "Authenticating");
+                    }
+                    else if(state == NetworkInfo.DetailedState.BLOCKED) {
+                        Log.d(TAG, "Blocked");
+                    }
+                    else if(state == NetworkInfo.DetailedState.CONNECTING) {
+                        Log.d(TAG, "Connecting");
+                    }
+                    else if(state == NetworkInfo.DetailedState.DISCONNECTED) {
+                        Log.d(TAG, "Disconnected");
+                    }
+                    else if(state == NetworkInfo.DetailedState.DISCONNECTING) {
+                        Log.d(TAG, "Disconnecting");
+                    }
+                    else if(state == NetworkInfo.DetailedState.FAILED) {
+                        Log.d(TAG, "Failed");
+                    }
+                    else if(state == NetworkInfo.DetailedState.IDLE) {
+                        Log.d(TAG, "Idle");
+                    }
+                    else if(state == NetworkInfo.DetailedState.OBTAINING_IPADDR) {
+                        Log.d(TAG, "Obtaining IP Address");
+                    }
+                    else if(state == NetworkInfo.DetailedState.SCANNING) {
+                        Log.d(TAG, "Scanning");
+                    }
+                    else if(state == NetworkInfo.DetailedState.SUSPENDED) {
+                        Log.d(TAG, "Suspended");
+                    }
+                    else {
+                        // Possibly captive portal, whatever that means
+                        Log.d(TAG, "Disconnected: Unknown Reason");
+                    }
+                }
             }
         }
         else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {

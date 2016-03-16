@@ -21,13 +21,10 @@ public class WorldGroupInfoListener implements WifiP2pManager.GroupInfoListener 
     }
     @Override
     public void onGroupInfoAvailable(WifiP2pGroup group) {
-        Log.d(TAG, "Devices in Group:");
-        for (WifiP2pDevice device : group.getClientList()) {
-            String deviceName = device.deviceName;
-            String deviceAddr = device.deviceAddress;
-            Log.d(TAG, deviceName + '\t' + deviceAddr);
-
-        }
+        Log.d(TAG, "Group Size: " + group.getClientList().size());
+        Log.d(TAG, "Group Name: " + group.getNetworkName());
+        Log.d(TAG, "Group Interface: " + group.getInterface());
+        Log.d(TAG, "Group Passphrase: " + group.getPassphrase());
         // Do Database work with peers
     }
 }
