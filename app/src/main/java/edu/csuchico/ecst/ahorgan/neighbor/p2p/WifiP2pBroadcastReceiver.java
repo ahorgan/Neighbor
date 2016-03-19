@@ -46,6 +46,7 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         Intent new_intent = new Intent(context, P2pService.class);
+        new_intent.setAction(action);
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
             // Determine if Wifi P2P mode is enabled or not, alert
             // the Activity.
@@ -67,6 +68,14 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
             new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
 
         }
-        context.startService(new_intent);
+        IBinder binder;
+        if((binder = peekService(context, new_intent)) == null) {
+            Log.d(TAG, "Unable to bind, starting service");
+            context.startService(new_intent);
+        }
+        else {
+            Log.d(TAG, "Calling service's process action");
+            ((P2pService.LocalBinder) binder).getService().processAction(new_intent);
+        }
     }
 }

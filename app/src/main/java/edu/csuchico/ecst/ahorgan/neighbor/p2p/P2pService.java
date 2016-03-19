@@ -12,9 +12,13 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Binder;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
+
 
 public class P2pService extends Service {
     private static final String TAG = "P2pService";
@@ -31,6 +35,7 @@ public class P2pService extends Service {
     private boolean initialized = false;
     private int mStartMode;
     private final IBinder mBinder = new LocalBinder();
+    private ActionHandler mHandler;
 
 
     public P2pService() {
@@ -42,12 +47,27 @@ public class P2pService extends Service {
         }
     }
 
+    public class ActionHandler extends Handler {
+        public ActionHandler(Looper looper) {
+            super(looper);
+        }
+        @Override
+        public void handleMessage(Message msg) {
+            Intent intent = (Intent)msg.obj;
+            processAction(intent);
+        }
+    }
+
 
     @Override
     public void onCreate() {
         Log.d(TAG, "onCreate() called");
         if(!initialized)
             initialize();
+        HandlerThread thread = new HandlerThread("Process Actions Thread", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        thread.start();
+        Looper looper = thread.getLooper();
+        mHandler = new ActionHandler(looper);
     }
 
     public void initialize() {
@@ -71,9 +91,13 @@ public class P2pService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // The service is starting, due to a call to startService()
+        Log.d(TAG, "onStartCommand() called");
         if(!initialized)
             initialize();
-        processAction(intent);
+        Message msg = mHandler.obtainMessage();
+        msg.arg1 = startId;
+        msg.obj = intent;
+        mHandler.sendMessage(msg);
         return START_REDELIVER_INTENT;
     }
 
@@ -87,7 +111,9 @@ public class P2pService extends Service {
         Log.d(TAG, "onBind() Called");
         if(!initialized)
             initialize();
-        turnDiscoverOn();
+        Message msg = mHandler.obtainMessage();
+        msg.obj = intent;
+        mHandler.sendMessage(msg);
         return mBinder;
     }
 
@@ -105,6 +131,7 @@ public class P2pService extends Service {
     }
 
     public void processAction(Intent intent) {
+        Log.d(TAG, "Processing Action");
         String action = intent.getAction();
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
             // Determine if Wifi P2P mode is enabled or not, alert
@@ -125,12 +152,8 @@ public class P2pService extends Service {
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
             Log.d(TAG, "Wifi P2P Peers Changed Action");
-            WifiP2pDeviceList peers = intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST);
-            if(currentList != peers) {
-                Log.d(TAG, "Requesting Peers");
-                currentList = peers;
-                mManager.requestPeers(mChannel, mPeerListener);
-            }
+            //WifiP2pDeviceList peers = intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST);
+            mManager.requestPeers(mChannel, mPeerListener);
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
@@ -184,6 +207,10 @@ public class P2pService extends Service {
             WifiP2pDevice thisDevice = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
             mWorld.setThisDevice(thisDevice);
 
+        }
+        else {
+            Log.d(TAG, "Received Intent Without Matching Action");
+            turnDiscoverOn();
         }
     }
 
