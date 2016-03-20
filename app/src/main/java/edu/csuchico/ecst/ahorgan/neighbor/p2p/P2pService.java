@@ -1,5 +1,6 @@
 package edu.csuchico.ecst.ahorgan.neighbor.p2p;
 
+import android.app.IntentService;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -20,7 +21,7 @@ import android.os.Message;
 import android.util.Log;
 
 
-public class P2pService extends Service {
+public class P2pService extends IntentService {
     private static final String TAG = "P2pService";
     private WorldConnectionInfoListener mWorld;
     private WifiP2pManager mManager;
@@ -34,103 +35,16 @@ public class P2pService extends Service {
     private boolean receiverRegistered;
     private boolean initialized = false;
     private int mStartMode;
-    private final IBinder mBinder = new LocalBinder();
-    private ActionHandler mHandler;
 
 
     public P2pService() {
+        super("P2pService");
     }
-
-    public class LocalBinder extends Binder {
-        public P2pService getService() {
-            return P2pService.this;
-        }
-    }
-
-    public class ActionHandler extends Handler {
-        public ActionHandler(Looper looper) {
-            super(looper);
-        }
-        @Override
-        public void handleMessage(Message msg) {
-            Intent intent = (Intent)msg.obj;
-            processAction(intent);
-        }
-    }
-
 
     @Override
-    public void onCreate() {
-        Log.d(TAG, "onCreate() called");
+    public void onHandleIntent(Intent intent) {
         if(!initialized)
             initialize();
-        HandlerThread thread = new HandlerThread("Process Actions Thread", android.os.Process.THREAD_PRIORITY_BACKGROUND);
-        thread.start();
-        Looper looper = thread.getLooper();
-        mHandler = new ActionHandler(looper);
-    }
-
-    public void initialize() {
-        Log.d(TAG, "Initializing");
-        mManager = (WifiP2pManager) getApplicationContext().getSystemService(Context.WIFI_P2P_SERVICE);
-        mChannel = mManager.initialize(getApplicationContext(), Looper.getMainLooper(), new WifiP2pManager.ChannelListener() {
-            @Override
-            public void onChannelDisconnected() {
-                Log.d(TAG, "Channel Disconnected");
-            }
-        });
-        mWorld = new WorldConnectionInfoListener(mManager, mChannel);
-        mGroupListener = new WorldGroupInfoListener(mManager, mChannel, mWorld);
-        mWorld.setGroupInfoListener(mGroupListener);
-        mPeerListener = new WorldPeerListener(this, mManager, mChannel, mGroupListener, mWorld);
-        mWorld.setPeerListListener(mPeerListener);
-        initialized = true;
-    }
-
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // The service is starting, due to a call to startService()
-        Log.d(TAG, "onStartCommand() called");
-        if(!initialized)
-            initialize();
-        Message msg = mHandler.obtainMessage();
-        msg.arg1 = startId;
-        msg.obj = intent;
-        mHandler.sendMessage(msg);
-        return START_REDELIVER_INTENT;
-    }
-
-    /* unregister the broadcast receiver */
-    @Override
-    public void onDestroy() {
-
-    }
-    @Override
-    public IBinder onBind(Intent intent) {
-        Log.d(TAG, "onBind() Called");
-        if(!initialized)
-            initialize();
-        Message msg = mHandler.obtainMessage();
-        msg.obj = intent;
-        mHandler.sendMessage(msg);
-        return mBinder;
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        // All clients have unbound with unbindService()
-
-        return mAllowRebind;
-    }
-    @Override
-    public void onRebind(Intent intent) {
-        // A client is binding to the service with bindService(),
-        // after onUnbind() has already been called
-        //registerReceiver(mReceiver, mIntentFilter);
-    }
-
-    public void processAction(Intent intent) {
         Log.d(TAG, "Processing Action");
         String action = intent.getAction();
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
@@ -212,6 +126,23 @@ public class P2pService extends Service {
             Log.d(TAG, "Received Intent Without Matching Action");
             turnDiscoverOn();
         }
+    }
+
+    public void initialize() {
+        Log.d(TAG, "Initializing");
+        mManager = (WifiP2pManager) getApplicationContext().getSystemService(Context.WIFI_P2P_SERVICE);
+        mChannel = mManager.initialize(getApplicationContext(), Looper.getMainLooper(), new WifiP2pManager.ChannelListener() {
+            @Override
+            public void onChannelDisconnected() {
+                Log.d(TAG, "Channel Disconnected");
+            }
+        });
+        mWorld = new WorldConnectionInfoListener(mManager, mChannel);
+        mGroupListener = new WorldGroupInfoListener(mManager, mChannel, mWorld);
+        mWorld.setGroupInfoListener(mGroupListener);
+        mPeerListener = new WorldPeerListener(this, mManager, mChannel, mGroupListener, mWorld);
+        mWorld.setPeerListListener(mPeerListener);
+        initialized = true;
     }
 
     public void turnDiscoverOn() {

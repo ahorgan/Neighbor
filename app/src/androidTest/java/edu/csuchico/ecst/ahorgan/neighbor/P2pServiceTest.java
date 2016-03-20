@@ -1,5 +1,6 @@
 package edu.csuchico.ecst.ahorgan.neighbor;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.Parcel;
@@ -30,29 +31,17 @@ public class P2pServiceTest {
     public static final long TEST_LONG = 12345678L;
     private P2pService mService;
 
-    @Rule
-    public final ServiceTestRule mServiceRule = new ServiceTestRule();
-
     @Test
-    public void testWithBoundService() throws TimeoutException {
+    public void testWithStartedService() throws TimeoutException {
         Log.d(TAG, "testWithBoundService called");
         // Create the service Intent.
         Intent serviceIntent =
                 new Intent(InstrumentationRegistry.getTargetContext(),
                         P2pService.class);
+        Context context = InstrumentationRegistry.getContext();
 
         // Data can be passed to the service via the Intent.
         //serviceIntent.putExtra(P2pService.SEED_KEY, 42L);
-
-        // Bind the service and grab a reference to the binder.
-        IBinder binder = mServiceRule.bindService(serviceIntent);
-
-        // Get the reference to the service, or you can call
-        // public methods on the binder directly.
-        P2pService mService =
-                ((P2pService.LocalBinder) binder).getService();
-
-        // Verify that the service is working correctly.
-        //assertThat(service.getRandomInt(), is(any(Integer.class)));
+        context.startService(serviceIntent);
     }
 }

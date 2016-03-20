@@ -68,14 +68,6 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
             new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
 
         }
-        IBinder binder;
-        if((binder = peekService(context, new_intent)) == null) {
-            Log.d(TAG, "Unable to bind, starting service");
-            context.startService(new_intent);
-        }
-        else {
-            Log.d(TAG, "Calling service's process action");
-            ((P2pService.LocalBinder) binder).getService().processAction(new_intent);
-        }
+        context.startService(new_intent);
     }
 }

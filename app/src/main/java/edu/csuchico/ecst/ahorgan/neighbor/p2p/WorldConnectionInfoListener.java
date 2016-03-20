@@ -15,7 +15,15 @@ import android.util.Log;
 
 import com.couchbase.lite.Manager;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,23 +81,65 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
         groupFormed = info.groupFormed;
         if(groupFormed) {
             Log.d(TAG, "onConnectionInfoAvailable: Group Formed");
-            mManager.requestGroupInfo(mChannel, mGroupInfoListener);
             /*
                 Start exchanging packets using group owner as router
              */
             groupOwner = info.isGroupOwner;
             if(groupOwner) {
                 Log.d(TAG, "I'm Group Owner!");
+                mManager.requestGroupInfo(mChannel, mGroupInfoListener);
                 // Connected as 'router and peer'
+                try {
+                    for (; ; ) {
+                        ServerSocket socket = new ServerSocket(2468);
+                        Socket client = socket.accept();
+                        new Thread(new CommunicationHandler(client)).start();
+                    }
+                } catch (IOException e) {
+                    Log.d(TAG, e.getMessage());
+                }
             }
             else {
                 Log.d(TAG, "I'm a Peer in the Group");
                 Log.d(TAG, "Owner: " + info.groupOwnerAddress);
+                Socket socket = new Socket();
+                try {
+                    socket.bind(null);
+                    socket.connect(new InetSocketAddress(info.groupOwnerAddress, 2468), 500);
+                    InputStream inStream = socket.getInputStream();
+                    byte msg[] = new byte[1024];
+                    inStream.read(msg);
+                    Log.d(TAG, msg.toString());
+                    socket.close();
+                }
+                catch(IOException e) {
+                    Log.d(TAG, e.getMessage());
+                }
             }
         }
         else {
             Log.d(TAG, "onConnectionInfoAvailable: Group Not Formed");
 
+        }
+    }
+
+    class CommunicationHandler implements Runnable {
+        private Socket socket;
+        public CommunicationHandler(Socket socket) {
+            super();
+            this.socket = socket;
+        }
+        @Override
+        public void run() {
+            Log.d(TAG, "Handling Communication with" + socket.getInetAddress() + "on port" + socket.getLocalPort());
+            try {
+                OutputStream outStream = socket.getOutputStream();
+                outStream.write(("Hello from" + thisDevice.deviceName).getBytes());
+                socket.close();
+            }
+            catch(IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
         }
     }
 

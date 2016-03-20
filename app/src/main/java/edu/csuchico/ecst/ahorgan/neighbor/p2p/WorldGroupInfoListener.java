@@ -25,6 +25,5 @@ public class WorldGroupInfoListener implements WifiP2pManager.GroupInfoListener 
         Log.d(TAG, "Group Name: " + group.getNetworkName());
         Log.d(TAG, "Group Interface: " + group.getInterface());
         Log.d(TAG, "Group Passphrase: " + group.getPassphrase());
-        // Do Database work with peers
     }
 }
