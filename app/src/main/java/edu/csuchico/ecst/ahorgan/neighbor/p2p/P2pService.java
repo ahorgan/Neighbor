@@ -26,15 +26,9 @@ public class P2pService extends IntentService {
     private WorldConnectionInfoListener mWorld;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-    private WifiP2pBroadcastReceiver mReceiver;
-    private IntentFilter mIntentFilter;
     private WorldGroupInfoListener mGroupListener;
     private  WorldPeerListener mPeerListener;
-    private WifiP2pDeviceList currentList;
-    private boolean mAllowRebind; // indicates whether onRebind should be used
-    private boolean receiverRegistered;
     private boolean initialized = false;
-    private int mStartMode;
 
 
     public P2pService() {
@@ -76,7 +70,8 @@ public class P2pService extends IntentService {
             NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
             if(info.isConnected()) {
                 Log.d(TAG, "Connection Type: " + info.getTypeName());
-                mManager.requestConnectionInfo(mChannel, mWorld);
+                if(!mWorld.isGroupFormed())
+                    mManager.requestConnectionInfo(mChannel, mWorld);
             }
             else {
                 NetworkInfo.DetailedState state = info.getDetailedState();

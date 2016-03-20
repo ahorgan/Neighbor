@@ -89,32 +89,26 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                 Log.d(TAG, "I'm Group Owner!");
                 mManager.requestGroupInfo(mChannel, mGroupInfoListener);
                 // Connected as 'router and peer'
-                try {
-                    for (; ; ) {
-                        ServerSocket socket = new ServerSocket(2468);
-                        Socket client = socket.accept();
-                        new Thread(new CommunicationHandler(client)).start();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            ServerSocket socket = new ServerSocket(2468);
+                            while(!socket.isClosed()) {
+                                    Socket client = socket.accept();
+                                    new Thread(new ServerCommunicationHandler(thisDevice, client)).start();
+                            }
+                        }
+                        catch(IOException e) {
+                            Log.d(TAG, e.getMessage());
+                        }
                     }
-                } catch (IOException e) {
-                    Log.d(TAG, e.getMessage());
-                }
+                }).start();
             }
             else {
                 Log.d(TAG, "I'm a Peer in the Group");
                 Log.d(TAG, "Owner: " + info.groupOwnerAddress);
-                Socket socket = new Socket();
-                try {
-                    socket.bind(null);
-                    socket.connect(new InetSocketAddress(info.groupOwnerAddress, 2468), 500);
-                    InputStream inStream = socket.getInputStream();
-                    byte msg[] = new byte[1024];
-                    inStream.read(msg);
-                    Log.d(TAG, msg.toString());
-                    socket.close();
-                }
-                catch(IOException e) {
-                    Log.d(TAG, e.getMessage());
-                }
+                new Thread(new ClientCommunicationHandler(info)).start();
             }
         }
         else {
@@ -123,10 +117,12 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
         }
     }
 
-    class CommunicationHandler implements Runnable {
+    class ServerCommunicationHandler implements Runnable {
         private Socket socket;
-        public CommunicationHandler(Socket socket) {
+        private WifiP2pDevice device;
+        public ServerCommunicationHandler(WifiP2pDevice device, Socket socket) {
             super();
+            this.device = device;
             this.socket = socket;
         }
         @Override
@@ -134,7 +130,38 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             Log.d(TAG, "Handling Communication with" + socket.getInetAddress() + "on port" + socket.getLocalPort());
             try {
                 OutputStream outStream = socket.getOutputStream();
-                outStream.write(("Hello from" + thisDevice.deviceName).getBytes());
+                if(device != null) {
+                    outStream.write(("Hello from" + device.deviceName).getBytes());
+                }
+                else {
+                    outStream.write(("Hello from me").getBytes());
+                }
+                outStream.close();
+            }
+            catch(IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
+        }
+    }
+
+    class ClientCommunicationHandler implements Runnable {
+        private WifiP2pInfo info;
+        ClientCommunicationHandler(WifiP2pInfo info) {
+            super();
+            this.info = info;
+        }
+        @Override
+        public void run() {
+            Socket socket = new Socket();
+            try {
+                Log.d(TAG, "Connecting socket");
+                socket.bind(null);
+                socket.connect(new InetSocketAddress(info.groupOwnerAddress, 2468), 500);
+                InputStream inStream = socket.getInputStream();
+                byte msg[] = new byte[1024];
+                inStream.read(msg);
+                Log.d(TAG, msg.toString());
+                inStream.close();
                 socket.close();
             }
             catch(IOException e) {
