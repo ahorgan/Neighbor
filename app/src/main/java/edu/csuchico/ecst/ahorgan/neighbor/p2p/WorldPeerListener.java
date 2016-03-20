@@ -18,16 +18,13 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
     private WifiP2pManager.Channel mChannel;
     private WorldGroupInfoListener mGroupListener;
     private WorldConnectionInfoListener mConnectionListener;
-    private P2pService mService;
     private List<WifiP2pDevice> peerList;
 
-    WorldPeerListener(P2pService service,
-                      WifiP2pManager manager,
+    WorldPeerListener(WifiP2pManager manager,
                       WifiP2pManager.Channel channel,
                       WorldGroupInfoListener groupListener,
                       WorldConnectionInfoListener connectionListener) {
         super();
-        mService = service;
         mManager = manager;
         mChannel = channel;
         mGroupListener = groupListener;

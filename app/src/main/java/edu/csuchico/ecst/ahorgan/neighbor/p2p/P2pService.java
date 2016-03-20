@@ -23,22 +23,18 @@ import android.util.Log;
 
 public class P2pService extends IntentService {
     private static final String TAG = "P2pService";
-    private WorldConnectionInfoListener mWorld;
-    private WifiP2pManager mManager;
-    private WifiP2pManager.Channel mChannel;
-    private WorldGroupInfoListener mGroupListener;
-    private  WorldPeerListener mPeerListener;
-    private boolean initialized = false;
+    private World mWorld;
 
 
     public P2pService() {
         super("P2pService");
+        mWorld = World.getInstance();
     }
 
     @Override
     public void onHandleIntent(Intent intent) {
-        if(!initialized)
-            initialize();
+        if(!mWorld.isInitialized())
+            mWorld.initialize(getApplicationContext());
         Log.d(TAG, "Processing Action");
         String action = intent.getAction();
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
@@ -47,12 +43,12 @@ public class P2pService extends IntentService {
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
                 Log.d(TAG, "Wifi P2P State Enabled");
-                turnDiscoverOn();
+                mWorld.turnDiscoverOn();
 
             }
             else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED){
                 Log.d(TAG, "Wifi P2P State Disabled");
-                turnDiscoverOff();
+                mWorld.turnDiscoverOff();
             }
         }
         else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
@@ -60,8 +56,7 @@ public class P2pService extends IntentService {
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
             Log.d(TAG, "Wifi P2P Peers Changed Action");
-            //WifiP2pDeviceList peers = intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST);
-            mManager.requestPeers(mChannel, mPeerListener);
+            mWorld.requestPeers();
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
@@ -70,8 +65,7 @@ public class P2pService extends IntentService {
             NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
             if(info.isConnected()) {
                 Log.d(TAG, "Connection Type: " + info.getTypeName());
-                if(!mWorld.isGroupFormed())
-                    mManager.requestConnectionInfo(mChannel, mWorld);
+                mWorld.requestConnectionInfo();
             }
             else {
                 NetworkInfo.DetailedState state = info.getDetailedState();
@@ -119,102 +113,7 @@ public class P2pService extends IntentService {
         }
         else {
             Log.d(TAG, "Received Intent Without Matching Action");
-            turnDiscoverOn();
+            mWorld.turnDiscoverOn();
         }
     }
-
-    public void initialize() {
-        Log.d(TAG, "Initializing");
-        mManager = (WifiP2pManager) getApplicationContext().getSystemService(Context.WIFI_P2P_SERVICE);
-        mChannel = mManager.initialize(getApplicationContext(), Looper.getMainLooper(), new WifiP2pManager.ChannelListener() {
-            @Override
-            public void onChannelDisconnected() {
-                Log.d(TAG, "Channel Disconnected");
-            }
-        });
-        mWorld = new WorldConnectionInfoListener(mManager, mChannel);
-        mGroupListener = new WorldGroupInfoListener(mManager, mChannel, mWorld);
-        mWorld.setGroupInfoListener(mGroupListener);
-        mPeerListener = new WorldPeerListener(this, mManager, mChannel, mGroupListener, mWorld);
-        mWorld.setPeerListListener(mPeerListener);
-        initialized = true;
-    }
-
-    public void turnDiscoverOn() {
-        WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-
-                Log.d(TAG, "Discover Peers Turned On");
-            }
-
-            @Override
-            public void onFailure(int reasonCode) {
-                switch (reasonCode) {
-                    case WifiP2pManager.BUSY:
-                        Log.d(TAG, "Discover Peers: Manager Busy");
-                        break;
-                    case WifiP2pManager.P2P_UNSUPPORTED:
-                        Log.d(TAG, "Discover Peers: P2P Unsupported");
-                        break;
-                    case WifiP2pManager.ERROR:
-                        Log.d(TAG, "Discover Peers: Error");
-                        break;
-
-                }
-            }
-        };
-        mManager.discoverPeers(mChannel, actionListener);
-    }
-
-    public void turnDiscoverOff() {
-        mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.d(TAG, "Stopped Discover");
-            }
-
-            @Override
-            public void onFailure(int reason) {
-                switch(reason) {
-                    case WifiP2pManager.BUSY:
-                        Log.d(TAG, "Stopped Discover Failed: Busy");
-                        break;
-                    case WifiP2pManager.P2P_UNSUPPORTED:
-                        Log.d(TAG, "Stopped Discover Failed: P2P Unsupported");
-                        break;
-                    case WifiP2pManager.ERROR:
-                        Log.d(TAG, "Stopped Discover Failed: Error");
-                        break;
-                }
-            }
-        });
-    }
-
-    public void cancelConnection() {
-        mManager.cancelConnect(mChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.d(TAG, "Cancelled Connection");
-            }
-
-            @Override
-            public void onFailure(int reason) {
-                switch(reason) {
-                    case WifiP2pManager.P2P_UNSUPPORTED:
-                        Log.d(TAG, "Cancel Connection Failed P2P Unsupported");
-                        break;
-                    case WifiP2pManager.BUSY:
-                        Log.d(TAG, "Cancel Connection Failed Manager Busy");
-                        break;
-                    case WifiP2pManager.ERROR:
-                        Log.d(TAG, "Cancel Connection Failed Error");
-                        break;
-                }
-            }
-        });
-    }
-
-    public WorldPeerListener getPeerListener() {    return mPeerListener;   }
-    public WorldConnectionInfoListener getConnectionInfoListener() {    return mWorld;  }
 }

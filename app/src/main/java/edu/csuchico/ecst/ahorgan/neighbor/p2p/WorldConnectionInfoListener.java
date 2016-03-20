@@ -31,7 +31,7 @@ import java.util.List;
  * Created by annika on 2/28/16.
  */
 public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInfoListener {
-    private final static String TAG = "World";
+    private final static String TAG = "WorldConnInfoListener";
     private WifiP2pManager.Channel mChannel;
     private WifiP2pManager mManager;
     private WifiP2pManager.ConnectionInfoListener mConnectionInfoListener;
