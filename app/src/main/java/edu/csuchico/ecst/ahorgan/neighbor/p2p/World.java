@@ -2,24 +2,49 @@ package edu.csuchico.ecst.ahorgan.neighbor.p2p;
 
 import android.content.Context;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
+import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
+import android.os.Build;
 import android.os.Looper;
 import android.util.Log;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by annika on 3/20/16.
  */
 public class World {
     private static String TAG = "World";
+    private static String SERVER_PORT = "2468";
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private WorldConnectionInfoListener worldConnectionListener;
     private WorldPeerListener worldPeerListener;
     private WorldGroupInfoListener worldGroupListener;
-    private static World ourInstance = new World();
+    private WifiP2pDnsSdServiceInfo serviceInfo;
+    private WifiP2pDnsSdServiceRequest serviceRequest;
+    private ServerSocket mServerSocket;
+    private int mLocalPort;
+    final HashMap<String, Integer> neighbors = new HashMap<String, Integer>();
+    private static World ourInstance = null;
     private boolean initialized = false;
+    private boolean discovering = false;
+    private WifiP2pManager.DnsSdTxtRecordListener txtListener;
+    private WifiP2pManager.DnsSdServiceResponseListener servListene;
 
     public static World getInstance() {
+        if(ourInstance == null)
+            ourInstance = new World();
         return ourInstance;
     }
 
@@ -39,19 +64,254 @@ public class World {
                 Log.d(TAG, "Channel Disconnected");
             }
         });
-        worldConnectionListener = new WorldConnectionInfoListener(mManager, mChannel);
+        worldConnectionListener = new WorldConnectionInfoListener(this, mManager, mChannel);
         worldGroupListener = new WorldGroupInfoListener(mManager, mChannel, worldConnectionListener);
         worldConnectionListener.setGroupInfoListener(worldGroupListener);
-        worldPeerListener = new WorldPeerListener(mManager, mChannel, worldGroupListener, worldConnectionListener);
+        worldPeerListener = new WorldPeerListener(this, mManager, mChannel, worldGroupListener, worldConnectionListener);
         worldConnectionListener.setPeerListListener(worldPeerListener);
         initialized = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                discover();
+            }
+        }).start();
+    }
+
+    public void initializeServerSocket() {
+        try {
+            mServerSocket = new ServerSocket(0);
+            mLocalPort = mServerSocket.getLocalPort();
+        }
+        catch(IOException e) {
+            Log.d(TAG, e.getMessage());
+        }
+    }
+
+    public void startRegistration() {
+        //  Create a string map containing information about your service.
+        initializeServerSocket();
+        Map record = new HashMap();
+        record.put("listenport", String.valueOf(mLocalPort));
+        record.put("available", "visible");
+
+        // Service information.  Pass it an instance name, service type
+        // _protocol._transportlayer , and the map containing
+        // information other devices will want once they connect to this one.
+        serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_neighbor", "_presence._tcp", record);
+
+        mManager.addLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Added Local Service");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                switch(reason) {
+                    case WifiP2pManager.BUSY:
+                        Log.d(TAG, "Added Local Service Failed: Manager Busy");
+                        break;
+                    case WifiP2pManager.P2P_UNSUPPORTED:
+                        Log.d(TAG, "Added Local Service Failed: P2P Unsupported");
+                        break;
+                    case WifiP2pManager.ERROR:
+                        Log.d(TAG, "Added Local Service Failed: Error");
+                        break;
+                }
+            }
+        });
+    }
+
+    class ServerCommunicationHandler implements Runnable {
+        private Socket socket;
+        private WifiP2pDevice device;
+        public ServerCommunicationHandler(WifiP2pDevice device, Socket socket) {
+            super();
+            this.device = device;
+            this.socket = socket;
+        }
+        @Override
+        public void run() {
+            Log.d(TAG, "Handling Communication with" + socket.getInetAddress() + "on port" + socket.getLocalPort());
+            try {
+                OutputStream outStream = socket.getOutputStream();
+                if(device != null) {
+                    outStream.write(("Hello from" + device.deviceName).getBytes());
+                }
+                else {
+                    outStream.write(("Hello from me").getBytes());
+                }
+                outStream.close();
+            }
+            catch(IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
+        }
+    }
+
+    class ClientCommunicationHandler implements Runnable {
+        private WifiP2pDevice device;
+
+        ClientCommunicationHandler(WifiP2pDevice device) {
+            super();
+            this.device = device;
+        }
+        @Override
+        public void run() {
+            Socket socket = new Socket();
+            try {
+                Log.d(TAG, "Connecting socket");
+                int local_port = 2468;
+                if(neighbors.size() > 0 && neighbors.containsKey(device.deviceAddress)) {
+                    local_port = neighbors.get(device.deviceAddress);
+                }
+                socket.bind(null);
+                socket.connect(new InetSocketAddress(device.deviceAddress, local_port), 500);
+                InputStream inStream = socket.getInputStream();
+                byte msg[] = new byte[1024];
+                inStream.read(msg);
+                Log.d(TAG, msg.toString());
+                inStream.close();
+                socket.close();
+            }
+            catch(IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
+        }
+    }
+
+    public void discover() {
+        Log.d(TAG, "Discover");
+        if(Build.VERSION.SDK_INT < 16) {
+            turnDiscoverOn();
+        }
+        else {
+            startRegistration();
+            WifiP2pManager.DnsSdTxtRecordListener txtListener = new WifiP2pManager.DnsSdTxtRecordListener() {
+                @Override
+                /* Callback includes:
+                 * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
+                 * record: TXT record dta as a map of key/value pairs.
+                 * device: The device running the advertised service.
+                 */
+                public void onDnsSdTxtRecordAvailable(
+                        String fullDomain, Map record, WifiP2pDevice device) {
+                    Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
+                    Log.d(TAG, "Full Domain: " + fullDomain);
+                    if(fullDomain == "_neighbor._presence._tcp.local.")
+                        neighbors.put(device.deviceAddress, (int)record.get("listenport"));
+                }
+            };
+
+            WifiP2pManager.DnsSdServiceResponseListener servListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+                @Override
+                public void onDnsSdServiceAvailable(String instanceName, String registrationType,
+                                                    WifiP2pDevice resourceType) {
+
+                    // Update the device name with the human-friendly version from
+                    // the DnsTxtRecord, assuming one arrived.
+
+                    // Add to the custom adapter defined specifically for showing
+                    // wifi devices.
+                    Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
+                    //mManager.requestConnectionInfo(mChannel, worldConnectionListener);
+                    worldPeerListener.connectPeer(resourceType);
+                }
+            };
+
+            mManager.setDnsSdResponseListeners(mChannel, servListener, txtListener);
+
+            serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+
+            mManager.addServiceRequest(mChannel,
+                    serviceRequest,
+                    new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            // Success!
+                            Log.d(TAG, "Added Service Request");
+                        }
+
+                        @Override
+                        public void onFailure(int code) {
+                            // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                            Log.d(TAG, "Add Service Request Failed");
+                        }
+                    });
+            mManager.discoverServices(mChannel,
+                    new WifiP2pManager.ActionListener() {
+
+                        @Override
+                        public void onSuccess() {
+                            // Success!
+                            Log.d(TAG, "Discover Services Success");
+                            discovering = true;
+                        }
+
+                        @Override
+                        public void onFailure(int code) {
+                            // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                            Log.d(TAG, "Discover Services Failed");
+                        }
+
+                    });
+        }
+    }
+
+    public void unDiscover() {
+        Log.d(TAG, "Stop Discover");
+        if(Build.VERSION.SDK_INT < 16) {
+            turnDiscoverOff();
+        }
+        else {
+            mManager.removeLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "Remove Local Service Succeeded");
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    Log.d(TAG, "Remove Local Service Failed");
+                }
+            });
+
+            mManager.removeServiceRequest(mChannel, serviceRequest, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "Remove Service Request Succeeded");
+                    discovering = false;
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    Log.d(TAG, "Remove Service Request Failed");
+                }
+            });
+        }
+    }
+
+
+    public String getThisDeviceName() {
+        return worldConnectionListener.getThisDevice().deviceName;
+    }
+
+    public String getThisDeviceAddress() {
+        return worldConnectionListener.getThisDevice().deviceAddress;
     }
 
     public void turnDiscoverOn() {
+        try {
+            mServerSocket = new ServerSocket(2468);
+        }
+        catch(IOException e) {
+            Log.d(TAG, e.getMessage());
+        }
         WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-
+                discovering = true;
                 Log.d(TAG, "Discover Peers Turned On");
             }
 
@@ -78,6 +338,7 @@ public class World {
         mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
+                discovering = false;
                 Log.d(TAG, "Stopped Discover");
             }
 
@@ -120,7 +381,7 @@ public class World {
 
             @Override
             public void onFailure(int reason) {
-                switch(reason) {
+                switch (reason) {
                     case WifiP2pManager.P2P_UNSUPPORTED:
                         Log.d(TAG, "Cancel Connection Failed P2P Unsupported");
                         break;
@@ -133,5 +394,17 @@ public class World {
                 }
             }
         });
+    }
+
+    public ServerSocket getServerSocket() {
+        return mServerSocket;
+    }
+
+    public HashMap<String, Integer> getNeighbors() {
+        return neighbors;
+    }
+
+    public boolean isDiscovering() {
+        return discovering;
     }
 }

@@ -23,12 +23,11 @@ import android.util.Log;
 
 public class P2pService extends IntentService {
     private static final String TAG = "P2pService";
-    private World mWorld;
+    private final World mWorld = World.getInstance();
 
 
     public P2pService() {
         super("P2pService");
-        mWorld = World.getInstance();
     }
 
     @Override
@@ -43,12 +42,26 @@ public class P2pService extends IntentService {
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
                 Log.d(TAG, "Wifi P2P State Enabled");
-                mWorld.turnDiscoverOn();
+                if(!mWorld.isDiscovering()) {
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mWorld.discover();
+                        }
+                    }).start();
+                }
 
             }
             else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED){
                 Log.d(TAG, "Wifi P2P State Disabled");
-                mWorld.turnDiscoverOff();
+                if(!mWorld.isDiscovering()) {
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mWorld.unDiscover();
+                        }
+                    }).start();
+                }
             }
         }
         else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
@@ -56,7 +69,7 @@ public class P2pService extends IntentService {
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
             Log.d(TAG, "Wifi P2P Peers Changed Action");
-            mWorld.requestPeers();
+            //mWorld.requestPeers();
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
@@ -113,7 +126,14 @@ public class P2pService extends IntentService {
         }
         else {
             Log.d(TAG, "Received Intent Without Matching Action");
-            mWorld.turnDiscoverOn();
+            if(!mWorld.isDiscovering()) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mWorld.discover();
+                    }
+                }).start();
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ public class WorldGroupInfoListener implements WifiP2pManager.GroupInfoListener 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private WorldConnectionInfoListener mConnectionListener;
+    private WifiP2pGroup mGroup;
 
     WorldGroupInfoListener(WifiP2pManager manager, WifiP2pManager.Channel channel, WorldConnectionInfoListener connectionListener) {
         mManager = manager;
@@ -21,9 +22,15 @@ public class WorldGroupInfoListener implements WifiP2pManager.GroupInfoListener 
     }
     @Override
     public void onGroupInfoAvailable(WifiP2pGroup group) {
+        mGroup = group;
+        mConnectionListener.setGroup(mGroup);
         Log.d(TAG, "Group Size: " + group.getClientList().size());
         Log.d(TAG, "Group Name: " + group.getNetworkName());
         Log.d(TAG, "Group Interface: " + group.getInterface());
         Log.d(TAG, "Group Passphrase: " + group.getPassphrase());
+    }
+
+    public WifiP2pGroup getGroup() {
+        return mGroup;
     }
 }

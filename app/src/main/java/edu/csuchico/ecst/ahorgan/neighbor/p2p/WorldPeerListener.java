@@ -4,9 +4,11 @@ import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -19,12 +21,15 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
     private WorldGroupInfoListener mGroupListener;
     private WorldConnectionInfoListener mConnectionListener;
     private List<WifiP2pDevice> peerList;
+    private World mWorld;
 
-    WorldPeerListener(WifiP2pManager manager,
+    WorldPeerListener(World world,
+                      WifiP2pManager manager,
                       WifiP2pManager.Channel channel,
                       WorldGroupInfoListener groupListener,
                       WorldConnectionInfoListener connectionListener) {
         super();
+        mWorld = world;
         mManager = manager;
         mChannel = channel;
         mGroupListener = groupListener;
@@ -56,8 +61,15 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
                 // Connect new peers
                 for (WifiP2pDevice peer : peers.getDeviceList()) {
                     if (!peerList.contains(peer)) {
-                        Log.d(TAG, "Connecting to " + peer.deviceName);
-                        connectPeer(peer);
+                        HashMap<String, Integer> neighbors = mWorld.getNeighbors();
+                        if(neighbors.size() > 0 && neighbors.containsKey(peer.deviceAddress)) {
+                            Log.d(TAG, "Connecting to " + peer.deviceName);
+                            connectPeer(peer);
+                        }
+                        else if(Build.VERSION.SDK_INT < 16){
+                            Log.d(TAG, "Connecting to " + peer.deviceName);
+                            connectPeer(peer);
+                        }
                     }
                 }
             }
