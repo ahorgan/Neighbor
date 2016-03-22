@@ -8,6 +8,7 @@ import android.os.Build;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -50,10 +51,6 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
 
     public void onPeersAvailable(WifiP2pDeviceList peers) {
         Log.d(TAG, "Peers Available");
-        analyzeChange(peers);
-    }
-
-    public void analyzeChange(WifiP2pDeviceList peers) {
         // A previous peer list exists, look for added and deleted peers
         if(peerList.size() > 0 && mConnectionListener.isGroupFormed()) {
             Log.d(TAG, "Group Exists");
@@ -63,10 +60,12 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
                     if (!peerList.contains(peer)) {
                         HashMap<String, Integer> neighbors = mWorld.getNeighbors();
                         if(neighbors.size() > 0 && neighbors.containsKey(peer.deviceAddress)) {
+                            Log.d(TAG, "Device found in Neighbors with port " + neighbors.get(peer.deviceAddress));
                             Log.d(TAG, "Connecting to " + peer.deviceName);
                             connectPeer(peer);
                         }
                         else if(Build.VERSION.SDK_INT < 16){
+                            Log.d(TAG, "This device has sdk version " + Build.VERSION.SDK_INT);
                             Log.d(TAG, "Connecting to " + peer.deviceName);
                             connectPeer(peer);
                         }
@@ -81,30 +80,48 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
             Log.d(TAG, "Group Does Not Exist");
             peerList.clear();
             peerList.addAll(peers.getDeviceList());
-            mConnectionListener.setPeerList(peerList);
-            if(peerList.size() > 0) {
+            HashMap<String, Integer> neighbors = mWorld.getNeighbors();
+            if(neighbors.size() > 0) {
                 Log.d(TAG, "Found Peers");
-                for(WifiP2pDevice device : peerList) {
-                    Log.d(TAG, device.deviceName + " " + device.deviceAddress);
+                /*
+                    Iterate through Peer List,
+                    Delete Peers that Have Not Been Service Discovered
+                 */
+                try {
+                    for (WifiP2pDevice device : peerList) {
+                        Log.d(TAG, device.deviceName + " " + device.deviceAddress);
+                        if (!neighbors.containsKey(device.deviceAddress)) {
+                            peerList.remove(device);
+                        }
+                    }
                 }
-                connectPeer(peerList.get(0));
+                catch(ConcurrentModificationException e) {
+                    Log.d(TAG, e.getMessage());
+                }
+                mConnectionListener.setPeerList(peerList);
+                if (peerList.size() > 0)
+                    connectPeer(peerList.get(0));
+               else
+                 mWorld.turnDiscoverOn();
             }
             else {
                 Log.d(TAG, "No Peers Found");
+                mWorld.turnServiceDiscoveryOn();
             }
         }
     }
 
     public void connectPeer(WifiP2pDevice device) {
         //obtain a peer from the WifiP2pDeviceList
-        WifiP2pConfig config = new WifiP2pConfig();
+        final WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = device.deviceAddress;
         mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
 
             @Override
             public void onSuccess() {
                 //success logic
-                Log.d(TAG, "Connect Peer Success");
+                Log.d(TAG, "Connect Peer " + config.deviceAddress + " Success");
+                mManager.requestConnectionInfo(mChannel, mConnectionListener);
             }
 
             @Override

@@ -42,11 +42,15 @@ public class P2pService extends IntentService {
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
                 Log.d(TAG, "Wifi P2P State Enabled");
+                if(!mWorld.isInitialized()) {
+                    mWorld.initialize(getApplicationContext());
+                }
                 if(!mWorld.isDiscovering()) {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            mWorld.discover();
+                            mWorld.turnServiceDiscoveryOn();
+                            mWorld.turnDiscoverOn();
                         }
                     }).start();
                 }
@@ -54,11 +58,11 @@ public class P2pService extends IntentService {
             }
             else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED){
                 Log.d(TAG, "Wifi P2P State Disabled");
-                if(!mWorld.isDiscovering()) {
+                if(mWorld != null && !mWorld.isDiscovering()) {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            mWorld.unDiscover();
+                            mWorld.cleanup();
                         }
                     }).start();
                 }
@@ -69,7 +73,8 @@ public class P2pService extends IntentService {
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
             Log.d(TAG, "Wifi P2P Peers Changed Action");
-            //mWorld.requestPeers();
+            //mWorld.turnDiscoverOn();
+            mWorld.requestPeers();
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
@@ -77,8 +82,12 @@ public class P2pService extends IntentService {
             // that.
             NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
             if(info.isConnected()) {
-                Log.d(TAG, "Connection Type: " + info.getTypeName());
-                mWorld.requestConnectionInfo();
+                if(info.getTypeName() == "WIFI_P2P") {
+                    Log.d(TAG, "Requesting Connection Info");
+                    mWorld.requestConnectionInfo();
+                }
+                //else
+                  //  mWorld.cleanup();
             }
             else {
                 NetworkInfo.DetailedState state = info.getDetailedState();
@@ -130,7 +139,8 @@ public class P2pService extends IntentService {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        mWorld.discover();
+                        mWorld.turnServiceDiscoveryOn();
+                        mWorld.turnDiscoverOn();
                     }
                 }).start();
             }

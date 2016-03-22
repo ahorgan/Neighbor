@@ -10,6 +10,7 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.os.Looper;
 import android.support.design.widget.TabLayout;
 import android.util.Log;
@@ -46,6 +47,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
     private WifiP2pDevice thisDevice;
     private WifiP2pGroup mGroup = null;
     private List<WifiP2pDevice> peerList;
+    private ClientCommunicationHandler clientHandler;
     private boolean groupFormed;
     private boolean groupOwner;
 
@@ -60,6 +62,8 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
 
     public void setGroup(WifiP2pGroup group) {
         mGroup = group;
+        peerList.clear();
+        peerList.addAll(mGroup.getClientList());
     }
 
     public void setChannel(WifiP2pManager.Channel channel) {
@@ -94,8 +98,8 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                 Start exchanging packets using group owner as router
              */
             groupOwner = info.isGroupOwner;
+            mManager.requestGroupInfo(mChannel, mGroupInfoListener);
             if(groupOwner) {
-                mManager.requestGroupInfo(mChannel, mGroupInfoListener);
                 Log.d(TAG, "I'm Group Owner!");
                 // Connected as 'router and peer'
                 new Thread(new Runnable() {
@@ -119,9 +123,14 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             else {
                 Log.d(TAG, "I'm a Peer in the Group");
                 Log.d(TAG, "Owner: " + info.groupOwnerAddress);
+                Log.d(TAG, "Looking for owner in peerList, size " + peerList.size());
                 for(WifiP2pDevice device : peerList) {
+                    Log.d(TAG, device.deviceAddress + " " + device.deviceName);
                     if(device.isGroupOwner()) {
-                        new Thread(new ClientCommunicationHandler(info, device)).start();
+                        Log.d(TAG, "Found Group Owner!");
+                        clientHandler = new ClientCommunicationHandler(info, device);
+                        if(mWorld.getNeighbors().size() > 0)
+                            startClientSocket();
                         break;
                     }
                 }
@@ -131,6 +140,10 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             Log.d(TAG, "onConnectionInfoAvailable: Group Not Formed");
 
         }
+    }
+
+    public void startClientSocket() {
+        new Thread(clientHandler).start();
     }
 
     class ServerCommunicationHandler implements Runnable {
@@ -171,6 +184,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             this.info = info;
             this.device = device;
         }
+
         @Override
         public void run() {
             Socket socket = new Socket();
@@ -178,7 +192,8 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                 Log.d(TAG, "Connecting socket as client");
                 HashMap<String, Integer> neighbors = mWorld.getNeighbors();
                 int port = 2468;
-                if(neighbors.size() > 0 && neighbors.containsKey(device.deviceAddress)) {
+                if(neighbors.containsKey(device.deviceAddress)) {
+                    Log.d(TAG, "Getting port number from Neighbors");
                     port = neighbors.get(device.deviceAddress);
                 }
                 Log.d(TAG, "Connecting to port " + String.valueOf(port));
