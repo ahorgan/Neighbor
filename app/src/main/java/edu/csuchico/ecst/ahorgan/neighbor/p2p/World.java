@@ -1,14 +1,19 @@
 package edu.csuchico.ecst.ahorgan.neighbor.p2p;
 
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
+import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 import java.io.IOException;
@@ -19,6 +24,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.RunnableFuture;
 
 /**
  * Created by annika on 3/20/16.
@@ -26,6 +32,7 @@ import java.util.Map;
 public class World {
     private static String TAG = "World";
     private static String SERVER_PORT = "2468";
+    private static long BROADCAST_INTERVAL = 10000;
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private WorldConnectionInfoListener worldConnectionListener;
@@ -35,12 +42,46 @@ public class World {
     private WifiP2pDnsSdServiceRequest serviceRequest;
     private ServerSocket mServerSocket;
     private int mLocalPort;
-    final HashMap<String, Integer> neighbors = new HashMap<String, Integer>();
+    private HashMap<String, Integer> neighbors;
     private static World ourInstance = null;
     private boolean initialized = false;
+    private boolean block_discovering = false;
     private boolean discovering = false;
-    WifiP2pManager.DnsSdTxtRecordListener txtListener;
-    WifiP2pManager.DnsSdServiceResponseListener servListener;
+    private WifiP2pManager.DnsSdTxtRecordListener txtListener;
+    private WifiP2pManager.DnsSdServiceResponseListener servListener;
+    private Context mContext;
+    private Runnable broadcastRunnable = new Runnable() {
+        @Override
+        public void run() {
+            while(discovering) {
+                Log.d(TAG, "Calling turnDiscoverOn()");
+                turnDiscoverOn();
+                try {
+                    Thread.sleep(BROADCAST_INTERVAL);
+                }
+                catch(InterruptedException e) {
+                    Log.d(TAG, e.getMessage());
+                }
+            }
+        }
+    };
+    private class BroadcastTask extends AsyncTask {
+        @Override
+        protected Object doInBackground(Object[] params) {
+            try {
+                Thread.sleep(BROADCAST_INTERVAL);
+            }
+            catch(InterruptedException e) {
+                Log.d(TAG, e.getMessage());
+            }
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Object result) {
+            turnDiscoverOn();
+        }
+    }
+
 
     public static World getInstance() {
         if(ourInstance == null)
@@ -77,6 +118,7 @@ public class World {
             });
         }
         unDiscover();
+        worldConnectionListener.turnOffListening();
         try {
             if (mServerSocket != null && !mServerSocket.isClosed())
                 mServerSocket.close();
@@ -96,6 +138,7 @@ public class World {
 
     public void initialize(Context context) {
         Log.d(TAG, "Initializing");
+        mContext = context;
         mManager = (WifiP2pManager) context.getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(context, Looper.getMainLooper(), new WifiP2pManager.ChannelListener() {
             @Override
@@ -110,25 +153,24 @@ public class World {
         worldConnectionListener.setPeerListListener(worldPeerListener);
         initializeServerSocket();
         initialized = true;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-              turnServiceDiscoveryOn();
-            }
-        }).start();
+        neighbors = new HashMap<>();
     }
 
     public void initializeServerSocket() {
-        try {
-            mServerSocket = new ServerSocket(0);
-            mLocalPort = mServerSocket.getLocalPort();
-        }
-        catch(IOException e) {
-            Log.d(TAG, e.getMessage());
+        if(mServerSocket == null) {
+            try {
+                mServerSocket = new ServerSocket(0);
+                mLocalPort = mServerSocket.getLocalPort();
+            } catch (IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
         }
     }
 
     public void startRegistration() {
+        if(!initialized) {
+            initialize(mContext);
+        }
         //  Create a string map containing information about your service.
         Map record = new HashMap();
         record.put("listenport", String.valueOf(mLocalPort));
@@ -164,27 +206,29 @@ public class World {
     }
 
     public void turnServiceDiscoveryOn() {
-        mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                startRegistration();
-            }
-
-            @Override
-            public void onFailure(int reason) {
-                switch (reason) {
-                    case WifiP2pManager.BUSY:
-                        Log.d(TAG, "Clear Local Services Failed, Busy");
-                        break;
-                    case WifiP2pManager.P2P_UNSUPPORTED:
-                        Log.d(TAG, "Clear Local Services Failed, P2P Unsupported");
-                        break;
-                    case WifiP2pManager.ERROR:
-                        Log.d(TAG, "Clear Local Services Failed, Error");
-                        break;
+        if(mManager != null && mChannel != null) {
+            mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    startRegistration();
                 }
-            }
-        });
+
+                @Override
+                public void onFailure(int reason) {
+                    switch (reason) {
+                        case WifiP2pManager.BUSY:
+                            Log.d(TAG, "Clear Local Services Failed, Busy");
+                            break;
+                        case WifiP2pManager.P2P_UNSUPPORTED:
+                            Log.d(TAG, "Clear Local Services Failed, P2P Unsupported");
+                            break;
+                        case WifiP2pManager.ERROR:
+                            Log.d(TAG, "Clear Local Services Failed, Error");
+                            break;
+                    }
+                }
+            });
+        }
     }
 
     public void discover() {
@@ -228,8 +272,10 @@ public class World {
                         if (!worldConnectionListener.isGroupOwner())
                             worldConnectionListener.startClientSocket();
                     }
-                    else
+                    else {
+                        block_discovering = true;
                         worldPeerListener.connectPeer(resourceType);
+                    }
                 }
             };
 
@@ -247,6 +293,7 @@ public class World {
                                 public void onSuccess() {
                                     // Success!
                                     Log.d(TAG, "Added Service Request");
+
                                     mManager.discoverServices(mChannel,
                                             new WifiP2pManager.ActionListener() {
 
@@ -254,7 +301,9 @@ public class World {
                                                 public void onSuccess() {
                                                     // Success!
                                                     Log.d(TAG, "Discover Services Success");
-                                                    discovering = true;
+                                                    if (!discovering) {
+                                                        turnDiscoverOn();
+                                                    }
                                                 }
 
                                                 @Override
@@ -284,10 +333,11 @@ public class World {
 
     public void unDiscover() {
         Log.d(TAG, "Stop Discover");
+        discovering = false;
         if(Build.VERSION.SDK_INT < 16) {
             turnDiscoverOff();
         }
-        else if(serviceInfo != null){
+        else if(serviceInfo != null && mManager != null){
             mManager.removeLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
@@ -325,17 +375,17 @@ public class World {
     }
 
     public void turnDiscoverOn() {
-        try {
-            mServerSocket = new ServerSocket(2468);
-        }
-        catch(IOException e) {
-            Log.d(TAG, e.getMessage());
-        }
+        if(!initialized && mContext != null)
+            initialize(mContext);
+        initializeServerSocket();
         WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
                 discovering = true;
-                Log.d(TAG, "Discover Peers Turned On");
+                if(!block_discovering) {
+                    new BroadcastTask().execute();
+                    Log.d(TAG, "Discover Peers Turned On");
+                }
             }
 
             @Override
@@ -352,6 +402,7 @@ public class World {
                         break;
 
                 }
+                discovering = false;
             }
         };
         mManager.discoverPeers(mChannel, actionListener);
@@ -420,6 +471,8 @@ public class World {
     }
 
     public ServerSocket getServerSocket() {
+        if(mServerSocket == null)
+            initializeServerSocket();
         return mServerSocket;
     }
 
@@ -433,5 +486,9 @@ public class World {
 
     public boolean isGroupFormed() {
         return worldConnectionListener.isGroupFormed();
+    }
+
+    public void unblock_discovering() {
+        block_discovering = false;
     }
 }

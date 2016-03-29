@@ -50,6 +50,8 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
     private ClientCommunicationHandler clientHandler;
     private boolean groupFormed;
     private boolean groupOwner;
+    private boolean connected;
+    private boolean listening;
 
     public WorldConnectionInfoListener(World world, WifiP2pManager manager, WifiP2pManager.Channel channel) {
         mWorld = world;
@@ -58,6 +60,8 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
         peerList = new ArrayList<>();
         groupFormed = false;
         groupOwner = false;
+        connected = false;
+        listening = false;
     }
 
     public void setGroup(WifiP2pGroup group) {
@@ -91,6 +95,7 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
 
     @Override
     public void onConnectionInfoAvailable(WifiP2pInfo info) {
+        connected = false;
         groupFormed = info.groupFormed;
         if(groupFormed) {
             Log.d(TAG, "onConnectionInfoAvailable: Group Formed");
@@ -102,23 +107,25 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
             if(groupOwner) {
                 Log.d(TAG, "I'm Group Owner!");
                 // Connected as 'router and peer'
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            ServerSocket socket = mWorld.getServerSocket();
-                            Log.d(TAG, "Using socket on port " + socket.getLocalPort());
-                            while(true) {
+                if(!listening) {
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                ServerSocket socket = mWorld.getServerSocket();
+                                listening = true;
+                                Log.d(TAG, "Using socket on port " + socket.getLocalPort());
+                                while (listening) {
                                     Socket client = socket.accept();
                                     Log.d(TAG, "Client accepted");
                                     new Thread(new ServerCommunicationHandler(thisDevice, client)).start();
+                                }
+                            } catch (IOException e) {
+                                Log.d(TAG, e.getMessage());
                             }
                         }
-                        catch(IOException e) {
-                            Log.d(TAG, e.getMessage());
-                        }
-                    }
-                }).start();
+                    }).start();
+                }
             }
             else {
                 Log.d(TAG, "I'm a Peer in the Group");
@@ -138,11 +145,13 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
         }
         else {
             Log.d(TAG, "onConnectionInfoAvailable: Group Not Formed");
+            mWorld.unblock_discovering();
 
         }
     }
 
     public void startClientSocket() {
+
         new Thread(clientHandler).start();
     }
 
@@ -199,11 +208,18 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
                 Log.d(TAG, "Connecting to port " + String.valueOf(port));
                 socket.bind(null);
                 socket.connect(new InetSocketAddress(info.groupOwnerAddress, port), 500);
-                InputStream inStream = socket.getInputStream();
-                byte msg[] = new byte[1024];
-                inStream.read(msg);
-                Log.d(TAG, msg.toString());
-                inStream.close();
+                if(socket.isConnected()) {
+                    connected = true;
+                    InputStream inStream = socket.getInputStream();
+                    byte msg[] = new byte[1024];
+                    inStream.read(msg);
+                    Log.d(TAG, msg.toString());
+                    inStream.close();
+                }
+                else {
+                    connected = false;
+                    mWorld.turnDiscoverOn();
+                }
                 socket.close();
             }
             catch(IOException e) {
@@ -232,4 +248,11 @@ public class WorldConnectionInfoListener implements WifiP2pManager.ConnectionInf
         return groupOwner;
     }
 
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public void turnOffListening() {
+        listening = false;
+    }
 }

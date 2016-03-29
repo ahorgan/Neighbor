@@ -72,6 +72,29 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
                     }
                 }
             }
+            else if(!mConnectionListener.isConnected()) {
+                mManager.removeGroup(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG, "Removed Group");
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+                        switch(reason) {
+                            case WifiP2pManager.BUSY:
+                                Log.d(TAG, "Remove Group Failed, Busy");
+                                break;
+                            case WifiP2pManager.P2P_UNSUPPORTED:
+                                Log.d(TAG, "Remove Group Failed, P2P Unsupported");
+                                break;
+                            case WifiP2pManager.ERROR:
+                                Log.d(TAG, "Remove Group Failed, Error");
+                                break;
+                        }
+                    }
+                });
+            }
             peerList.clear();
             peerList.addAll(peers.getDeviceList());
             mConnectionListener.setPeerList(peerList);
@@ -88,27 +111,24 @@ public class WorldPeerListener implements WifiP2pManager.PeerListListener {
                     Delete Peers that Have Not Been Service Discovered
                  */
                 try {
+                    List<WifiP2pDevice> removePeers = new ArrayList<>();
                     for (WifiP2pDevice device : peerList) {
                         Log.d(TAG, device.deviceName + " " + device.deviceAddress);
                         if (!neighbors.containsKey(device.deviceAddress)) {
-                            peerList.remove(device);
+                            removePeers.add(device);
                         }
                     }
+                    peerList.removeAll(removePeers);
                 }
                 catch(ConcurrentModificationException e) {
-                    Log.d(TAG, e.getMessage());
+                    Log.d(TAG, "Concurrent Modification Exception");
                 }
                 mConnectionListener.setPeerList(peerList);
                 if (peerList.size() > 0)
                     connectPeer(peerList.get(0));
-               else
-                 mWorld.turnDiscoverOn();
-            }
-            else {
-                Log.d(TAG, "No Peers Found");
-                mWorld.turnServiceDiscoveryOn();
             }
         }
+        mWorld.turnServiceDiscoveryOn();
     }
 
     public void connectPeer(WifiP2pDevice device) {

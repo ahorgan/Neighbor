@@ -34,6 +34,14 @@ public class P2pService extends IntentService {
     public void onHandleIntent(Intent intent) {
         if(!mWorld.isInitialized())
             mWorld.initialize(getApplicationContext());
+        if(!mWorld.isDiscovering()) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    mWorld.turnServiceDiscoveryOn();
+                }
+            }).start();
+        }
         Log.d(TAG, "Processing Action");
         String action = intent.getAction();
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
@@ -42,19 +50,6 @@ public class P2pService extends IntentService {
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
                 Log.d(TAG, "Wifi P2P State Enabled");
-                if(!mWorld.isInitialized()) {
-                    mWorld.initialize(getApplicationContext());
-                }
-                if(!mWorld.isDiscovering()) {
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            mWorld.turnServiceDiscoveryOn();
-                            mWorld.turnDiscoverOn();
-                        }
-                    }).start();
-                }
-
             }
             else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED){
                 Log.d(TAG, "Wifi P2P State Disabled");
@@ -135,15 +130,6 @@ public class P2pService extends IntentService {
         }
         else {
             Log.d(TAG, "Received Intent Without Matching Action");
-            if(!mWorld.isDiscovering()) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mWorld.turnServiceDiscoveryOn();
-                        mWorld.turnDiscoverOn();
-                    }
-                }).start();
-            }
         }
     }
 }
