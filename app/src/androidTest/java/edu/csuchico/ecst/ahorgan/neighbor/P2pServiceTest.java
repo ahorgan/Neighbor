@@ -2,23 +2,17 @@ package edu.csuchico.ecst.ahorgan.neighbor;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.IBinder;
-import android.os.Parcel;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.rule.ServiceTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
-import android.util.Pair;
 
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import java.util.List;
+
 import java.util.concurrent.TimeoutException;
 
-import edu.csuchico.ecst.ahorgan.neighbor.p2p.P2pService;
+import edu.csuchico.ecst.ahorgan.neighbor.p2pWorld.P2pService;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;

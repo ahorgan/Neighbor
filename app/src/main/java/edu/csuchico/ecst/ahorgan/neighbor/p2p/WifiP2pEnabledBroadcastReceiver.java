@@ -4,8 +4,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.os.Looper;
 import android.util.Log;
+
+import edu.csuchico.ecst.ahorgan.neighbor.p2pWorld.P2pService;
 
 /**
  * Created by annika on 3/6/16.

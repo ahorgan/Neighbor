@@ -167,6 +167,32 @@ public class World {
         }
     }
 
+    public void turnServiceDiscoveryOn() {
+        if(mManager != null && mChannel != null) {
+            mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    startRegistration();
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    switch (reason) {
+                        case WifiP2pManager.BUSY:
+                            Log.d(TAG, "Clear Local Services Failed, Busy");
+                            break;
+                        case WifiP2pManager.P2P_UNSUPPORTED:
+                            Log.d(TAG, "Clear Local Services Failed, P2P Unsupported");
+                            break;
+                        case WifiP2pManager.ERROR:
+                            Log.d(TAG, "Clear Local Services Failed, Error");
+                            break;
+                    }
+                }
+            });
+        }
+    }
+
     public void startRegistration() {
         if(!initialized) {
             initialize(mContext);
@@ -203,32 +229,6 @@ public class World {
                 }
             }
         });
-    }
-
-    public void turnServiceDiscoveryOn() {
-        if(mManager != null && mChannel != null) {
-            mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
-                @Override
-                public void onSuccess() {
-                    startRegistration();
-                }
-
-                @Override
-                public void onFailure(int reason) {
-                    switch (reason) {
-                        case WifiP2pManager.BUSY:
-                            Log.d(TAG, "Clear Local Services Failed, Busy");
-                            break;
-                        case WifiP2pManager.P2P_UNSUPPORTED:
-                            Log.d(TAG, "Clear Local Services Failed, P2P Unsupported");
-                            break;
-                        case WifiP2pManager.ERROR:
-                            Log.d(TAG, "Clear Local Services Failed, Error");
-                            break;
-                    }
-                }
-            });
-        }
     }
 
     public void discover() {
