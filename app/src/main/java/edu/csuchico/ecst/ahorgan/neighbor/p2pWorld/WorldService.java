@@ -11,40 +11,31 @@ import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.RemoteException;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-/**
- * Created by annika on 4/3/16.
- */
-public class World extends Service {
+public class WorldService extends Service {
     private static String TAG = "p2pWorld/World";
     private static String serviceName = "_neighbor";
     private static String serviceType = "_presence._tcp";
@@ -70,14 +61,12 @@ public class World extends Service {
     private boolean initialized;
     private static World ourInstance;
     private final LocalBinder binder = new LocalBinder();
-
-    public World() {
-        super();
+    public WorldService() {
     }
 
     public class LocalBinder extends Binder {
-        World getService() {
-            return World.this;
+        WorldService getService() {
+            return WorldService.this;
         }
     }
 
@@ -102,6 +91,16 @@ public class World extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        super.onRebind(intent);
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return super.onUnbind(intent);
     }
 
     private class ConnectionManager implements WifiP2pManager.ConnectionInfoListener {
@@ -199,7 +198,7 @@ public class World extends Service {
                 mManager.removeLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                       addLocalService();
+                        addLocalService();
                     }
 
                     @Override
@@ -537,6 +536,7 @@ public class World extends Service {
                 }
             }
         });*/
-       mPeers.executePeerDiscovery();
+        mPeers.executePeerDiscovery();
     }
 }
+

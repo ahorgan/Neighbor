@@ -68,7 +68,7 @@ public class ForwardingTimeTable {
 
     public ForwardingTimeTable(Context context, Neighbor device) {
         mContext = context;
-        locationManager = (LocationManager) mContext.getSystemService(mContext.LOCATION_SERVICE);
+        locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         thisDevice = device;
         locationListener = new FTTLocationListener(this);
 

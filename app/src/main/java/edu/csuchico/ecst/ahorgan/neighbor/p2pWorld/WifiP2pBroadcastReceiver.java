@@ -5,13 +5,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.support.v4.content.WakefulBroadcastReceiver;
 import android.util.Log;
 
 
 /**
  * Created by annika on 3/1/16.
  */
-public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
+public class WifiP2pBroadcastReceiver extends WakefulBroadcastReceiver {
     private final static String TAG = "P2pBroadcastReceiver";
 
     public WifiP2pBroadcastReceiver() {
@@ -45,6 +46,6 @@ public class WifiP2pBroadcastReceiver extends BroadcastReceiver {
             new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
 
         }
-        context.startService(new_intent);
+        startWakefulService(context, new_intent);
     }
 }

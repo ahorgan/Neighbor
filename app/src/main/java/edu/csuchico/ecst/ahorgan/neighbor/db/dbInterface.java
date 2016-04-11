@@ -31,8 +31,8 @@ public class dbInterface {
     public dbInterface(Context context, String name) {
         DB_NAME = name;
         try {
-            this.getManagerInstance(context);
-            this.getDatabaseInstance();
+            getManagerInstance(context);
+            getDatabaseInstance();
         }
         catch(CouchbaseLiteException e) {
             Log.e(TAG, e.getMessage());
