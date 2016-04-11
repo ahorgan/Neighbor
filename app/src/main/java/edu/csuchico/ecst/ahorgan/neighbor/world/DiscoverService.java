@@ -52,6 +52,7 @@ public class DiscoverService extends Service {
     boolean discovering;
     boolean servDiscovering;
     ServiceDiscovery mServiceDiscovery;
+    final PeerListener mPeerListener = new PeerListener();
     Runnable startAndBindServiceDiscovery = new Runnable() {
         @Override
         public void run() {
@@ -117,7 +118,7 @@ public class DiscoverService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand()");
         Message msg = Message.obtain(mHandler, intent.getIntExtra("MESSAGE", MSG_DISCOVER));
-        if(msg.what != START_ALIVE) {
+        if(msg.what != START_ALIVE && mServiceDiscovery != null) {
             msg.arg1 = startId;
             msg.obj = intent;
             mHandler.sendMessage(msg);
@@ -179,31 +180,29 @@ public class DiscoverService extends Service {
                         discovering = true;
 
                     }
-                    else {
-                        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                            @Override
-                            public void onSuccess() {
-                                Log.d(TAG, "Discover Peers Success " + String.valueOf(blanksCount));
-                                if(mServiceDiscovery.getNeighbors().size() == 0) {
-                                    blanksCount++;
-                                    if(blanksCount >= 5) {
-                                        Log.d(TAG, "Restarting Service Discovery");
-                                        Intent intent = new Intent(DiscoverService.this, ServiceDiscovery.class);
-                                        intent.putExtra("MESSAGE", ServiceDiscovery.MSG_RESTART_SERVICE_DISCOVERY);
-                                        startService(intent);
-                                        blanksCount = 0;
-                                    }
+                    mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "Discover Peers Success " + String.valueOf(blanksCount));
+                            if(mServiceDiscovery.getNeighbors().size() == 0) {
+                                blanksCount++;
+                                if(blanksCount >= 2) {
+                                    Log.d(TAG, "Restarting Service Discovery");
+                                    Intent intent = new Intent(DiscoverService.this, ServiceDiscovery.class);
+                                    intent.putExtra("MESSAGE", ServiceDiscovery.MSG_RESTART_SERVICE_DISCOVERY);
+                                    startService(intent);
+                                    blanksCount = 0;
                                 }
                             }
+                        }
 
-                            @Override
-                            public void onFailure(int reason) {
-                                discovering = false;
-                                alarm.cancel(pendingIntent);
-                                Log.d(TAG, "Discover Peers Failed");
-                            }
-                        });
-                    }
+                        @Override
+                        public void onFailure(int reason) {
+                            discovering = false;
+                            alarm.cancel(pendingIntent);
+                            Log.d(TAG, "Discover Peers Failed");
+                        }
+                    });
                     break;
                 case MSG_STOP_DISCOVER:
                     Log.d(TAG, "MSG_STOP_DISCOVER");
@@ -234,6 +233,7 @@ public class DiscoverService extends Service {
                     break;
                 case MSG_PEERS_FOUND:
                     Log.d(TAG, "MSG_PEERS_FOUND");
+                    requestPeers();
                     break;
             }
             stopSelfResult(msg.arg1);
@@ -277,6 +277,10 @@ public class DiscoverService extends Service {
                     Log.d(TAG, e.getMessage());
                 }
             }
+        }
+
+        private void requestPeers() {
+            mManager.requestPeers(mChannel, mPeerListener);
         }
     }
 }

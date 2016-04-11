@@ -46,6 +46,12 @@ public class WorldService extends IntentService {
         context.startService(intent);
     }
 
+    public static void peersFound(Context context) {
+        Intent intent = new Intent(context, DiscoverService.class);
+        intent.putExtra("MESSAGE", DiscoverService.MSG_PEERS_FOUND);
+        context.startService(intent);
+    }
+
     public static void startServiceDiscovery(Context context) {
         Intent intent = new Intent(context, DiscoverService.class);
         intent.putExtra("MESSAGE", DiscoverService.MSG_SERVICE_DISCOVER);
@@ -89,6 +95,7 @@ public class WorldService extends IntentService {
                 // asynchronous call and the calling activity is notified with a
                 // callback on PeerListListener.onPeersAvailable()
                 Log.d(TAG, "Wifi P2P Peers Changed Action");
+                peersFound(getApplicationContext());
             }
             else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
                 Log.d(TAG, "Wifi P2P Connection Changed Action");

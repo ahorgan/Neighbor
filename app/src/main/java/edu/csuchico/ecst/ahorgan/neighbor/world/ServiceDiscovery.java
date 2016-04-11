@@ -83,7 +83,6 @@ public class ServiceDiscovery extends Service {
         Intent discover_service = new Intent(this, DiscoverService.class);
         discover_service.putExtra("MESSAGE", DiscoverService.START_ALIVE);
         startService(discover_service);
-        bindService(discover_service, mConnection, Context.BIND_ABOVE_CLIENT);
         HandlerThread thread = new HandlerThread("service_discovery_thread", Process.THREAD_PRIORITY_FOREGROUND);
         thread.start();
         mHandler = new ServiceDiscoveryHandler(thread.getLooper());
@@ -108,7 +107,7 @@ public class ServiceDiscovery extends Service {
         else {
             mPort = intent.getIntExtra("PORT", -1);
             setup(getApplicationContext(), mPort);
-            bindService(new Intent(this, DiscoverService.class), mConnection, BIND_AUTO_CREATE);
+            bindService(new Intent(this, DiscoverService.class), mConnection, BIND_IMPORTANT);
         }
         return START_STICKY;
     }
@@ -117,10 +116,10 @@ public class ServiceDiscovery extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind");
-        if(mDiscoverService == null) {
+        /*if(mDiscoverService == null) {
             Log.d(TAG, "Binding Service");
-            bindService(new Intent(this, intent.getComponent().getClass()), mConnection, Context.BIND_ABOVE_CLIENT);
-        }
+            bindService(new Intent(this, intent.getComponent().getClass()), mConnection, Context.BIND_IMPORTANT);
+        }*/
         return mBinder;
     }
 
