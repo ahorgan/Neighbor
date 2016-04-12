@@ -49,10 +49,12 @@ public class DiscoverService extends Service {
     int startId;
     int blanksCount = 0;
     Context mContext;
+    PendingIntent pendingIntent;
     boolean discovering;
     boolean servDiscovering;
     ServiceDiscovery mServiceDiscovery;
     final PeerListener mPeerListener = new PeerListener();
+    final ScheduledExecutorService discoverExecutor= new ScheduledThreadPoolExecutor(1);
     Runnable startAndBindServiceDiscovery = new Runnable() {
         @Override
         public void run() {
@@ -97,8 +99,9 @@ public class DiscoverService extends Service {
         thread.start();
         mHandler = new DiscoverHandler(thread.getLooper());
         if (mServer == null) {
-            mHandler.initializeServer();
+            initializeServer();
         }
+        // Start Service Discovery //
         Intent service_discovery = new Intent(this, ServiceDiscovery.class);
         service_discovery.putExtra("PORT", mPort);
         startService(service_discovery);
@@ -109,21 +112,21 @@ public class DiscoverService extends Service {
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy()");
-        super.onDestroy();
         if(mServiceDiscovery != null)
             unbindService(mDiscoveryConnection);
+        super.onDestroy();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand()");
         Message msg = Message.obtain(mHandler, intent.getIntExtra("MESSAGE", MSG_DISCOVER));
-        if(msg.what != START_ALIVE && mServiceDiscovery != null) {
+        if(msg.what != START_ALIVE) {
             msg.arg1 = startId;
             msg.obj = intent;
             mHandler.sendMessage(msg);
         }
-        else {
+        else if(mServiceDiscovery == null) {
             bindService(new Intent(this, ServiceDiscovery.class), mDiscoveryConnection, BIND_ABOVE_CLIENT);
         }
         return START_STICKY;
@@ -132,13 +135,17 @@ public class DiscoverService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind");
+       // if(mServiceDiscovery == null) {
+           //bindService(new Intent(this, ServiceDiscovery.class), mDiscoveryConnection, BIND_ABOVE_CLIENT);
+        //}
         return mBinder;
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind");
-        return super.onUnbind(intent);
+        bindService(new Intent(this, ServiceDiscovery.class), mDiscoveryConnection, BIND_ABOVE_CLIENT);
+        return true;
     }
 
     class LocalBinder extends Binder {
@@ -155,7 +162,6 @@ public class DiscoverService extends Service {
     class DiscoverHandler extends Handler {
         //final ScheduledExecutorService discoverExecutor = new ScheduledThreadPoolExecutor(1);
         AlarmManager alarm;
-        PendingIntent pendingIntent;
 
         DiscoverHandler(Looper looper) {
             super(looper);
@@ -172,45 +178,22 @@ public class DiscoverService extends Service {
                     Log.d(TAG, "MSG_DISCOVER");
                     if (!discovering) {
                         Log.d(TAG, "Turn on Discover Alarm");
-                        /*discoverExecutor.scheduleWithFixedDelay(
-                                peerDiscoveryRunnable, 0, 1000, TimeUnit.MILLISECONDS);*/
+                        discoverExecutor.scheduleWithFixedDelay(
+                                peerDiscoveryRunnable, 0, 10000, TimeUnit.MILLISECONDS);
                         Intent alarmIntent = new Intent(mContext, AlarmReceiverForDiscoverLoop.class);
-                        pendingIntent = PendingIntent.getBroadcast(mContext, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-                        alarm.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 10000, pendingIntent);
+                        //pendingIntent = PendingIntent.getBroadcast(mContext, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                        //alarm.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime(), 10000, pendingIntent);
                         discovering = true;
-
                     }
-                    mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            Log.d(TAG, "Discover Peers Success " + String.valueOf(blanksCount));
-                            if(mServiceDiscovery.getNeighbors().size() == 0) {
-                                blanksCount++;
-                                if(blanksCount >= 2) {
-                                    Log.d(TAG, "Restarting Service Discovery");
-                                    Intent intent = new Intent(DiscoverService.this, ServiceDiscovery.class);
-                                    intent.putExtra("MESSAGE", ServiceDiscovery.MSG_RESTART_SERVICE_DISCOVERY);
-                                    startService(intent);
-                                    blanksCount = 0;
-                                }
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(int reason) {
-                            discovering = false;
-                            alarm.cancel(pendingIntent);
-                            Log.d(TAG, "Discover Peers Failed");
-                        }
-                    });
                     break;
                 case MSG_STOP_DISCOVER:
                     Log.d(TAG, "MSG_STOP_DISCOVER");
                     //discoverExecutor.shutdownNow();
-                    if (discovering && alarm != null) {
-                        alarm.cancel(pendingIntent);
-                        discovering = false;
-                    }
+                    //if (discovering && alarm != null) {
+                      //  alarm.cancel(pendingIntent);
+                    discoverExecutor.shutdownNow();
+                    discovering = false;
+                   // }
                     break;
                 case MSG_SERVICE_DISCOVER:
                     Log.d(TAG, "MSG_SERVICE_DISCOVER");
@@ -234,6 +217,7 @@ public class DiscoverService extends Service {
                 case MSG_PEERS_FOUND:
                     Log.d(TAG, "MSG_PEERS_FOUND");
                     requestPeers();
+                    sendMessage(Message.obtain(this, MSG_SERVICE_DISCOVER));
                     break;
             }
             stopSelfResult(msg.arg1);
@@ -245,42 +229,42 @@ public class DiscoverService extends Service {
                 serv.setup(mContext, mPort);
             }
         };*/
-        Runnable peerDiscoveryRunnable = new Runnable() {
-            @Override
-            public void run() {
-                mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        discovering = true;
-                        Log.d(TAG, "Discover Peers Success");
-                        mHandler.postDelayed(peerDiscoveryRunnable, 10000);
-                    }
 
-                    @Override
-                    public void onFailure(int reason) {
-                        discovering = false;
-                        Log.d(TAG, "Discover Peers Fail");
-                        if (alarm != null)
-                            alarm.cancel(pendingIntent);
-                    }
-                });
-            }
-        };
+    }
 
-        private void initializeServer() {
-            if (mServer == null) {
-                try {
-                    mServer = new ServerSocket(0);
-                    mPort = mServer.getLocalPort();
-                    Log.d(TAG, "Listening on port " + String.valueOf(mPort));
-                } catch (IOException e) {
-                    Log.d(TAG, e.getMessage());
+    Runnable peerDiscoveryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    discovering = true;
+                    Log.d(TAG, "Discover Peers Success");
                 }
+
+                @Override
+                public void onFailure(int reason) {
+                    discovering = false;
+                    Log.d(TAG, "Discover Peers Fail");
+                    mHandler.sendMessage(Message.obtain(mHandler, MSG_STOP_DISCOVER));
+                }
+            });
+        }
+    };
+
+    private void initializeServer() {
+        if (mServer == null) {
+            try {
+                mServer = new ServerSocket(0);
+                mPort = mServer.getLocalPort();
+                Log.d(TAG, "Listening on port " + String.valueOf(mPort));
+            } catch (IOException e) {
+                Log.d(TAG, e.getMessage());
             }
         }
+    }
 
-        private void requestPeers() {
-            mManager.requestPeers(mChannel, mPeerListener);
-        }
+    private void requestPeers() {
+        mManager.requestPeers(mChannel, mPeerListener);
     }
 }

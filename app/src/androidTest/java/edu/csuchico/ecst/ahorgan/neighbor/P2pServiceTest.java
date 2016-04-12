@@ -13,7 +13,7 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.TimeoutException;
 
 import edu.csuchico.ecst.ahorgan.neighbor.world.DiscoverService;
-import edu.csuchico.ecst.ahorgan.neighbor.world.WorldService;
+import edu.csuchico.ecst.ahorgan.neighbor.new_world.NewWorldService;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -24,7 +24,7 @@ public class P2pServiceTest {
     private static final String TAG = "P2pServiceTest";
     public static final String TEST_STRING = "This is a string";
     public static final long TEST_LONG = 12345678L;
-    private WorldService mService;
+    private NewWorldService mService;
 
     @Test
     public void testWithStartedService() throws TimeoutException {
@@ -32,7 +32,7 @@ public class P2pServiceTest {
         // Create the service Intent.
         Intent serviceIntent =
                 new Intent(InstrumentationRegistry.getTargetContext(),
-                        WorldService.class);
+                        NewWorldService.class);
         Context context = InstrumentationRegistry.getContext();
 
         // Data can be passed to the service via the Intent.

@@ -31,6 +31,7 @@ public class ServiceDiscovery extends Service {
     public static final int MSG_RESTART_SERVICE_DISCOVERY = 1;
     public static final int MSG_STOP_SERVICE_DISCOVERY = 2;
     public static final int MSG_SETUP = 3;
+    public static final int MSG_RECORD_FOUND = 4;
     private static ServiceDiscovery ourInstance = new ServiceDiscovery();
     private int mPort;
     WifiP2pManager mManager;
@@ -47,6 +48,7 @@ public class ServiceDiscovery extends Service {
     final ServiceListeners listeners = new ServiceListeners();
     final Map Neighbors = listeners.getTrustedPeersInfo();
     Context mContext;
+    private boolean nothingFound = true;
 
     //public static ServiceDiscovery getInstance() {
       //  return ourInstance;
@@ -80,9 +82,12 @@ public class ServiceDiscovery extends Service {
     public void onCreate() {
         super.onCreate();
         mContext = getApplicationContext();
+        // Start Discover //
         Intent discover_service = new Intent(this, DiscoverService.class);
         discover_service.putExtra("MESSAGE", DiscoverService.START_ALIVE);
         startService(discover_service);
+
+        // Start Handler //
         HandlerThread thread = new HandlerThread("service_discovery_thread", Process.THREAD_PRIORITY_FOREGROUND);
         thread.start();
         mHandler = new ServiceDiscoveryHandler(thread.getLooper());
@@ -90,9 +95,9 @@ public class ServiceDiscovery extends Service {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
         if(mDiscoverService != null)
-            unbindService(mConnection);
+           unbindService(mConnection);
+        super.onDestroy();
         Log.d(TAG, "onDestroy()");
     }
 
@@ -100,14 +105,17 @@ public class ServiceDiscovery extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand");
         if(setup) {
-            Message msg = Message.obtain(mHandler, intent.getIntExtra("MESSAGE", MSG_SETUP));
+            Log.d(TAG, "Set Up True");
+            Message msg = Message.obtain(mHandler, intent.getIntExtra("MESSAGE", MSG_RESTART_SERVICE_DISCOVERY));
             msg.arg1 = startId;
             mHandler.sendMessage(msg);
         }
         else {
+            Log.d(TAG, "Set Up False");
             mPort = intent.getIntExtra("PORT", -1);
             setup(getApplicationContext(), mPort);
-            bindService(new Intent(this, DiscoverService.class), mConnection, BIND_IMPORTANT);
+            if(mDiscoverService == null)
+                bindService(new Intent(this, DiscoverService.class), mConnection, BIND_IMPORTANT);
         }
         return START_STICKY;
     }
@@ -116,17 +124,18 @@ public class ServiceDiscovery extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind");
-        /*if(mDiscoverService == null) {
-            Log.d(TAG, "Binding Service");
-            bindService(new Intent(this, intent.getComponent().getClass()), mConnection, Context.BIND_IMPORTANT);
-        }*/
+        //if(mDiscoverService == null) {
+           // Log.d(TAG, "Binding Service");
+            //bindService(new Intent(this, intent.getComponent().getClass()), mConnection, Context.BIND_AUTO_CREATE);
+        //}
         return mBinder;
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind");
-        return super.onUnbind(intent);
+        bindService(new Intent(this, intent.getComponent().getClass()), mConnection, Context.BIND_AUTO_CREATE);
+        return true;
     }
 
     class ServiceDiscoveryHandler extends Handler {
@@ -139,7 +148,7 @@ public class ServiceDiscovery extends Service {
             switch(msg.what) {
                 case MSG_RESTART_SERVICE_DISCOVERY:
                     Log.d(TAG, "MSG_RESTART_SERVICE_DISCOVERY");
-                    restartServices();
+                    serviceDiscoveryTask.execute();
                     break;
                 case MSG_STOP_SERVICE_DISCOVERY:
                     Log.d(TAG, "MSG_STOP_SERVICE_DISCOVERY");
@@ -149,10 +158,40 @@ public class ServiceDiscovery extends Service {
                     Log.d(TAG, "MSG_SETUP");
                     setup(mContext);
                     break;
+                case MSG_RECORD_FOUND:
+                    Log.d(TAG, "MSG_RECORD_FOUND");
+                    nothingFound = false;
+                    break;
             }
             stopSelfResult(msg.arg1);
         }
     }
+
+    AsyncTask serviceDiscoveryTask = new AsyncTask() {
+        @Override
+        protected Object doInBackground(Object[] params) {
+            if(!setup) {
+                restartServices();
+            }
+            else
+                setup(getApplicationContext());
+
+            while(nothingFound) {
+                try {
+                    Thread.sleep(10000);
+                }
+                catch(InterruptedException e) {
+                    Log.d(TAG, "serviceDiscoveryTask interrupted");
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Object o) {
+            mHandler.sendMessage(Message.obtain(mHandler, MSG_RECORD_FOUND));
+        }
+    };
 
     public Runnable restartServiceDiscovery = new Runnable() {
         @Override
@@ -170,9 +209,9 @@ public class ServiceDiscovery extends Service {
                     Log.d(TAG, "Channel Disconnected");
                 }
             });
-            setup = false;
+            setup = true;
             if (mPort != -1)
-                mHandler.postDelayed(restartServiceDiscovery, 2000);
+                restartServices();
         }
     }
 
@@ -184,7 +223,7 @@ public class ServiceDiscovery extends Service {
                 Log.d(TAG, "Channel Disconnected");
             }
         });
-        setup = false;
+        setup = true;
         mPort = port;
         if(mPort != -1)
             restartServices();
@@ -208,35 +247,42 @@ public class ServiceDiscovery extends Service {
 
             @Override
             public void onFailure(int reason) {
+                setup = false;
                 Log.d(TAG, "setUpServiceDiscovery: Failed Adding Local Service");
             }
         });
     }
 
     public void restartServices() {
-        mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.d(TAG, "clear local services success");
-                mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "clear service requests success");
-                        registerService();
-                    }
+        if(setup) {
+            mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "clear local services success");
+                    mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "clear service requests success");
+                            registerService();
+                        }
 
-                    @Override
-                    public void onFailure(int reason) {
-                        Log.d(TAG, "clear service requests failed");
-                    }
-                });
-            }
+                        @Override
+                        public void onFailure(int reason) {
+                            setup = false;
+                            Log.d(TAG, "clear service requests failed");
+                        }
+                    });
+                }
 
-            @Override
-            public void onFailure(int reason) {
-                Log.d(TAG, "clear local services fail");
-            }
-        });
+                @Override
+                public void onFailure(int reason) {
+                    setup = false;
+                    Log.d(TAG, "clear local services fail");
+                }
+            });
+        }
+        else
+            setup(getApplicationContext());
     }
 
     private void clearServices() {
@@ -248,11 +294,11 @@ public class ServiceDiscovery extends Service {
                     @Override
                     public void onSuccess() {
                         Log.d(TAG, "clear service requests success");
-                        setup = false;
                     }
 
                     @Override
                     public void onFailure(int reason) {
+                        setup = false;
                         Log.d(TAG, "clear service requests failed");
                     }
                 });
@@ -260,6 +306,7 @@ public class ServiceDiscovery extends Service {
 
             @Override
             public void onFailure(int reason) {
+                setup = false;
                 Log.d(TAG, "clear local services fail");
             }
         });
@@ -281,10 +328,13 @@ public class ServiceDiscovery extends Service {
                     @Override
                     public void onSuccess() {
                         Log.d(TAG, "Service Discovery Success");
+                        Intent discoverService = new Intent(ServiceDiscovery.this, DiscoverService.class);
+                        bindService(discoverService, mConnection, BIND_IMPORTANT);
                     }
 
                     @Override
                     public void onFailure(int reason) {
+                        setup = false;
                         Log.d(TAG, "Service Discovery Failed");
                     }
                 });
@@ -292,6 +342,7 @@ public class ServiceDiscovery extends Service {
 
             @Override
             public void onFailure(int reason) {
+                setup = false;
                 Log.d(TAG, "addServiceRequest: Failed");
             }
         });
