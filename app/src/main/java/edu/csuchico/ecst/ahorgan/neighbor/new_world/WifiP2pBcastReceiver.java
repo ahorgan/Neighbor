@@ -77,6 +77,7 @@ public class WifiP2pBcastReceiver extends BroadcastReceiver{
             }
             else {
                 Log.d(TAG, "Connection type is " + info.getTypeName());
+                context.startService(new Intent(context, PeerManagerService.class));
             }
         }
         else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {

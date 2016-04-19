@@ -39,6 +39,7 @@ public class NewWorldService extends Service {
     private Context mContext;
     private boolean registered = false;
     private boolean discovering = false;
+    private boolean blockDiscovering = false;
     private ServerSocket mServerSocket;
     private Map<String, Integer> neighborPorts = new HashMap<>();
     private Map<String, WifiP2pDevice> trustedNeighbors = new HashMap<>();
@@ -141,29 +142,32 @@ public class NewWorldService extends Service {
         if(!registered) {
             registerService();
         }
-        switch(intent.getIntExtra("SIG", SIG)) {
-            case SIG:
-                Log.d(TAG, "SIG");
-                break;
-            case SIG_PEERS_CHANGED:
-                Log.d(TAG, "SIG_PEERS_CHANGED");
-                discoverServices();
-                break;
-            case SIG_STOP_DISCOVERY:
-                if(trustedNeighbors.size() > 0) {
-                    mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            Log.d(TAG, "Cleared Service Requests");
-                        }
+        if(intent != null && intent.hasExtra("SIG")) {
+            switch (intent.getIntExtra("SIG", SIG)) {
+                case SIG:
+                    Log.d(TAG, "SIG");
+                    break;
+                case SIG_PEERS_CHANGED:
+                    Log.d(TAG, "SIG_PEERS_CHANGED");
+                    if (!blockDiscovering)
+                        discoverServices();
+                    break;
+                case SIG_STOP_DISCOVERY:
+                    if (trustedNeighbors.size() > 0) {
+                        mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d(TAG, "Cleared Service Requests");
+                            }
 
-                        @Override
-                        public void onFailure(int reason) {
-                            Log.d(TAG, "Failed to clear service requests");
-                        }
-                    });
-                }
-                break;
+                            @Override
+                            public void onFailure(int reason) {
+                                Log.d(TAG, "Failed to clear service requests");
+                            }
+                        });
+                    }
+                    break;
+            }
         }
         return START_STICKY;
     }
@@ -177,7 +181,7 @@ public class NewWorldService extends Service {
             unbindService(pmConnection);
         if(cmService != null)
             unbindService(cmConnection);
-        tearDown();
+        tearDown(true);
         super.onDestroy();
     }
 
@@ -186,6 +190,8 @@ public class NewWorldService extends Service {
         Log.d(TAG, "Binded");
         if(pmService == null)
             bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_IMPORTANT);
+        if(cmService == null)
+            bindService(new Intent(this, ConnectionManager.class), cmConnection, BIND_IMPORTANT);
         return nwBinder;
     }
 
@@ -211,6 +217,12 @@ public class NewWorldService extends Service {
         catch(IOException e) {
             Log.d(TAG, e.getMessage());
         }
+    }
+
+    public void stopDiscovery() {
+        Log.d(TAG, "Stop Discovery");
+        blockDiscovering = true;
+        tearDown(false);
     }
 
     private void registerService() {
@@ -290,33 +302,35 @@ public class NewWorldService extends Service {
         });
     }
 
-    public void tearDown() {
-        try {
-            mServerSocket.close();
+    public void tearDown(boolean complete) {
+        if(complete) {
+            try {
+                mServerSocket.close();
+            } catch (IOException e) {
+                Log.d(TAG, e.getMessage());
+            }
+            mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.d(TAG, "Clear Local Services");
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    Log.d(TAG, "Failed Clearing Local Services");
+                }
+            });
         }
-        catch(IOException e) {
-            Log.d(TAG, e.getMessage());
-        }
-        mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+        mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "New World Tear Down Success");
-                        discovering = false;
-                    }
-
-                    @Override
-                    public void onFailure(int reason) {
-                        Log.d(TAG, "New World Tear Down Fail");
-                    }
-                });
+                Log.d(TAG, "New World Tear Down Success");
+                discovering = false;
             }
 
             @Override
             public void onFailure(int reason) {
-
+                Log.d(TAG, "New World Tear Down Fail");
             }
         });
     }

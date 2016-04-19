@@ -82,17 +82,19 @@ public class ConnectionManager extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Start");
         if(nwService == null)
-            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_AUTO_CREATE);
+            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_IMPORTANT);
         if(pmService == null)
-        bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_AUTO_CREATE);
-        switch(intent.getIntExtra("SIG", SIG)) {
-            case SIG:
-                Log.d(TAG, "SIG");
-                break;
-            case SIG_REQUEST_CONN_INFO:
-                Log.d(TAG, "SIG_REQUEST_CONN_INFO");
-                requestConnectionInfo();
-                break;
+            bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_IMPORTANT);
+        if(intent != null && intent.hasExtra("SIG")) {
+            switch (intent.getIntExtra("SIG", SIG)) {
+                case SIG:
+                    Log.d(TAG, "SIG");
+                    break;
+                case SIG_REQUEST_CONN_INFO:
+                    Log.d(TAG, "SIG_REQUEST_CONN_INFO");
+                    requestConnectionInfo();
+                    break;
+            }
         }
         return START_STICKY;
     }
@@ -100,6 +102,10 @@ public class ConnectionManager extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "Bind");
+        if(pmService == null)
+            bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_IMPORTANT);
+        if(nwService == null)
+            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_ABOVE_CLIENT);
         return mBinder;
     }
 
@@ -133,6 +139,7 @@ public class ConnectionManager extends Service {
     }
 
     public void requestConnectionInfo() {
+        Log.d(TAG, "Requesting Connection info");
         mManager.requestConnectionInfo(mChannel, cmConnectionListener);
     }
 
@@ -154,10 +161,11 @@ public class ConnectionManager extends Service {
             else {
                 Log.d(TAG, "Group Did Not Form");
                 if(pmService != null) {
-                    Intent intent = new Intent(ConnectionManager.this, PeerManagerService.class);
-                    intent.putExtra("SIG", PeerManagerService.SIG);
-                    startService(intent);
+                    pmService.cancelConnecting();
                 }
+                Intent intent = new Intent(ConnectionManager.this, PeerManagerService.class);
+                intent.putExtra("SIG", PeerManagerService.SIG);
+                startService(intent);
             }
         }
     }
