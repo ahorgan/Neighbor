@@ -44,31 +44,40 @@ public class WifiP2pBcastReceiver extends BroadcastReceiver{
         else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Peers Changed Action");
 
-            Log.d(TAG, "Starting Peer Manager");
-            Intent pmIntent = new Intent(context, PeerManagerService.class);
-            pmIntent.putExtra("SIG", PeerManagerService.SIG_REQUEST_PEERS);
-            context.startService(pmIntent);
             Log.d(TAG, "Starting New World");
             Intent nwIntent = new Intent(context, NewWorldService.class);
             nwIntent.putExtra("SIG", NewWorldService.SIG_PEERS_CHANGED);
             context.startService(nwIntent);
+            Log.d(TAG, "Starting Peer Manager");
+            Intent pmIntent = new Intent(context, PeerManagerService.class);
+            pmIntent.putExtra("SIG", PeerManagerService.SIG_REQUEST_PEERS);
+            context.startService(pmIntent);
         }
         else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P Connection Changed Action");
             // Connection state changed!  We should probably do something about
             // that.
-                Log.d(TAG, "Wifi P2P Connection Changed Action");
-                // Connection state changed!  We should probably do something about
-                // that.
-                NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-                if(info.isConnected()) {
-                    if(info.getTypeName() == "WIFI_P2P") {
-                        Log.d(TAG, "Requesting Connection Info");
-                        //mWorld.requestConnectionInfo();
-                    }
-                    //else
-                    //  mWorld.cleanup();
-                }
+            Log.d(TAG, "Wifi P2P Connection Changed Action");
+            // Connection state changed!  We should probably do something about
+            // that.
+            NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+            if(info.isConnected() && info.getTypeName() == "WIFI_P2P") {
+                Log.d(TAG, "Requesting Connection Info");
+                Log.d(TAG, "Starting Peer Manager");
+                Intent cmIntent = new Intent(context, ConnectionManager.class);
+                cmIntent.putExtra("SIG", ConnectionManager.SIG_REQUEST_CONN_INFO);
+                context.startService(cmIntent);
+                Intent pmIntent = new Intent(context, PeerManagerService.class);
+                pmIntent.putExtra("SIG", PeerManagerService.SIG_CONNECT_PEERS);
+                context.startService(pmIntent);
+                /*Log.d(TAG, "Starting New World");
+                Intent nwIntent = new Intent(context, NewWorldService.class);
+                nwIntent.putExtra("SIG", NewWorldService.SIG_PEERS_CHANGED);
+                context.startService(nwIntent);*/
+            }
+            else {
+                Log.d(TAG, "Connection type is " + info.getTypeName());
+            }
         }
         else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P This Device Changed Action");

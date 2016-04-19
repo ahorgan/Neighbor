@@ -27,8 +27,11 @@ public class NewWorldService extends Service {
     public static final String LISTEN_PORT = "listenport";
     public static final int SIG = 0;
     public static final int SIG_PEERS_CHANGED = 1;
+    public static final int SIG_RESTART_DISCOVRY = 2;
+    public static final int SIG_STOP_DISCOVERY = 3;
     private final NWBinder nwBinder = new NWBinder();
     private PeerManagerService pmService;
+    private ConnectionManager cmService;
     private WifiP2pDnsSdServiceInfo serviceInfo;
     private WifiP2pDnsSdServiceRequest serviceRequest;
     private WifiP2pManager mManager;
@@ -45,7 +48,7 @@ public class NewWorldService extends Service {
     private ServiceConnection pmConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG, "Connected with " + name);
+            Log.d(TAG, "Connected with Peer Manager");
             pmService = ((PeerManagerService.PMBinder)service).getService();
         }
 
@@ -53,6 +56,18 @@ public class NewWorldService extends Service {
         public void onServiceDisconnected(ComponentName name) {
             Log.d(TAG, "Disconnected with " + name);
             pmService = null;
+        }
+    };
+    private ServiceConnection cmConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "Connected with Connection Manager");
+            cmService = ((ConnectionManager.CMBinder)service).getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            cmService = null;
         }
     };
 
@@ -64,14 +79,17 @@ public class NewWorldService extends Service {
             Log.d(TAG, "DNS Record Available for " +
                     srcDevice.deviceName + " " + srcDevice.deviceAddress);
             if(fullDomainName.split("\\.")[0].matches("_neighbor")) {
+                for(String key : txtRecordMap.keySet()) {
+                    Log.d(TAG, key + " : " + txtRecordMap.get(key));
+                }
                 if(txtRecordMap.containsKey(LISTEN_PORT)) {
-                    int port = Integer.getInteger(txtRecordMap.get(LISTEN_PORT).toString());
-                    neighborPorts.put(srcDevice.deviceAddress, port);
+                    String port = txtRecordMap.get(LISTEN_PORT).toString();
+                    neighborPorts.put(srcDevice.deviceAddress, Integer.valueOf(port));
                     trustedNeighbors.put(srcDevice.deviceAddress, srcDevice);
                     Log.d(TAG, "DNS Record Available for " +
                             srcDevice.deviceName + " " +
                             srcDevice.deviceAddress + "listening on port" +
-                            String.valueOf(port));
+                            port);
                 }
             }
         }
@@ -97,8 +115,12 @@ public class NewWorldService extends Service {
     @Override
     public void onCreate() {
         Log.d(TAG, "Create");
-        Intent startPM = new Intent(this, PeerManagerService.class);
+        super.onCreate();
+
+        Intent startPM = new Intent(NewWorldService.this, PeerManagerService.class);
         startService(startPM);
+        Intent startCM = new Intent(NewWorldService.this, ConnectionManager.class);
+        startService(startCM);
         mContext = getApplicationContext();
         mManager = (WifiP2pManager) mContext.getSystemService(mContext.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(mContext, getMainLooper(), new WifiP2pManager.ChannelListener() {
@@ -107,7 +129,6 @@ public class NewWorldService extends Service {
                 Log.d(TAG, "Channel Disconnected");
             }
         });
-        super.onCreate();
     }
 
     @Override
@@ -115,6 +136,8 @@ public class NewWorldService extends Service {
         Log.d(TAG, "Start");
         if(pmService == null)
             bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_IMPORTANT);
+        if(cmService == null)
+            bindService(new Intent(this, ConnectionManager.class), cmConnection, BIND_IMPORTANT);
         if(!registered) {
             registerService();
         }
@@ -124,8 +147,23 @@ public class NewWorldService extends Service {
                 break;
             case SIG_PEERS_CHANGED:
                 Log.d(TAG, "SIG_PEERS_CHANGED");
-                if(pmService != null)
-                    pmService.requestPeers();
+                discoverServices();
+                break;
+            case SIG_STOP_DISCOVERY:
+                if(trustedNeighbors.size() > 0) {
+                    mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "Cleared Service Requests");
+                        }
+
+                        @Override
+                        public void onFailure(int reason) {
+                            Log.d(TAG, "Failed to clear service requests");
+                        }
+                    });
+                }
+                break;
         }
         return START_STICKY;
     }
@@ -133,8 +171,13 @@ public class NewWorldService extends Service {
     @Override
     public void onDestroy() {
         Log.d(TAG, "Destroy");
+        trustedNeighbors.clear();
+        neighborPorts.clear();
         if(pmService != null)
             unbindService(pmConnection);
+        if(cmService != null)
+            unbindService(cmConnection);
+        tearDown();
         super.onDestroy();
     }
 
@@ -147,6 +190,11 @@ public class NewWorldService extends Service {
     }
 
     @Override
+    public void onRebind(Intent intent) {
+        super.onRebind(intent);
+    }
+
+    @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "Unbind");
         return true;
@@ -156,6 +204,8 @@ public class NewWorldService extends Service {
         try {
             mServerSocket = new ServerSocket(mPort);
             mPort = mServerSocket.getLocalPort();
+            if(cmService != null)
+                cmService.setServerSocket(mServerSocket);
             Log.d(TAG, "Neighbor listening on port " + mPort);
         }
         catch(IOException e) {
@@ -189,7 +239,7 @@ public class NewWorldService extends Service {
                     @Override
                     public void onFailure(int reason) {
                         Log.d(TAG, "Failed Adding Local Service");
-                        stopSelf();
+                        //stopSelf();
                     }
                 });
             }
@@ -220,7 +270,7 @@ public class NewWorldService extends Service {
                             @Override
                             public void onFailure(int reason) {
                                 Log.d(TAG, "Service Discovery Failed");
-                                stopSelf();
+                                //stopSelf();
                             }
                         });
                     }
@@ -228,7 +278,7 @@ public class NewWorldService extends Service {
                     @Override
                     public void onFailure(int reason) {
                         Log.d(TAG, "Failed Adding Service Request");
-                        stopSelf();
+                        //stopSelf();
                     }
                 });
             }
@@ -236,6 +286,37 @@ public class NewWorldService extends Service {
             @Override
             public void onFailure(int reason) {
                 Log.d(TAG, "Failed Clear Service Requests");
+            }
+        });
+    }
+
+    public void tearDown() {
+        try {
+            mServerSocket.close();
+        }
+        catch(IOException e) {
+            Log.d(TAG, e.getMessage());
+        }
+        mManager.clearLocalServices(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                mManager.clearServiceRequests(mChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG, "New World Tear Down Success");
+                        discovering = false;
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+                        Log.d(TAG, "New World Tear Down Fail");
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(int reason) {
+
             }
         });
     }

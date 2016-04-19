@@ -5,14 +5,18 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +31,12 @@ public class PeerManagerService extends Service {
     WifiP2pManager.Channel mChannel;
     Context mContext;
     ScheduledThreadPoolExecutor discoverExecutor;
+    private boolean groupFormed;
+    private boolean groupOwner;
+    private boolean executorDiscovering = false;
+    private ConnectionManager cmService;
+    private int count = 0;
+    private Map<String, WifiP2pDevice> trustedNeighbors = new HashMap<>();
     private final PMPeerListener pmPeerListener = new PMPeerListener();
     private ServiceConnection nwConnection = new ServiceConnection() {
         @Override
@@ -41,6 +51,19 @@ public class PeerManagerService extends Service {
             nwService = null;
         }
     };
+    private ServiceConnection cmConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "Connected with Connection Manager");
+            cmService = ((ConnectionManager.CMBinder)service).getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "Disconnected with Connection Manager");
+            cmService = null;
+        }
+    };
     private Runnable discoverRunnable = new Runnable() {
         @Override
         public void run() {
@@ -53,7 +76,7 @@ public class PeerManagerService extends Service {
                 @Override
                 public void onFailure(int reason) {
                     Log.d(TAG, "Discover Peers Failed");
-                    stopSelf();
+                    discoverExecutor.shutdownNow();
                 }
             });
         }
@@ -72,6 +95,7 @@ public class PeerManagerService extends Service {
     public void onCreate() {
         Log.d(TAG, "Create");
         super.onCreate();
+        startService(new Intent(this, NewWorldService.class));
         mContext = getApplicationContext();
         mManager = (WifiP2pManager) mContext.getSystemService(mContext.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(mContext, getMainLooper(), new WifiP2pManager.ChannelListener() {
@@ -96,12 +120,19 @@ public class PeerManagerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Start");
-        if(nwService == null)
-            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_IMPORTANT);
+        if(nwService == null) {
+            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_ABOVE_CLIENT);
+        }
+        if(cmService == null) {
+            bindService(new Intent(this, ConnectionManager.class), cmConnection, BIND_IMPORTANT);
+        }
         switch(intent.getIntExtra("SIG", SIG)) {
             case SIG:
                 Log.d(TAG, "SIG");
-                discoverExecutor.scheduleAtFixedRate(discoverRunnable, 0, 10000, TimeUnit.MILLISECONDS);
+                if(!executorDiscovering) {
+                    discoverExecutor.scheduleAtFixedRate(discoverRunnable, 0, 10000, TimeUnit.MILLISECONDS);
+                    executorDiscovering = true;
+                }
                 break;
             case SIG_REQUEST_PEERS:
                 Log.d(TAG, "SIG_REQUEST_PEERS");
@@ -109,6 +140,20 @@ public class PeerManagerService extends Service {
                 break;
             case SIG_CONNECT_PEERS:
                 Log.d(TAG, "SIG_CONNECT_PEERS");
+                discoverExecutor.shutdownNow();
+                if(nwService != null && nwService.getTrustedNeighbors().size() > 0) {
+                    mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "Discovery Stopped");
+                        }
+
+                        @Override
+                        public void onFailure(int reason) {
+                            Log.d(TAG, "Discovery Failed to Stop");
+                        }
+                    });
+                }
                 break;
         }
         return START_STICKY;
@@ -117,7 +162,15 @@ public class PeerManagerService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "Bind");
+        if(nwService == null) {
+            bindService(new Intent(this, NewWorldService.class), nwConnection, BIND_ABOVE_CLIENT);
+        }
         return pmBinder;
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        super.onRebind(intent);
     }
 
     @Override
@@ -140,12 +193,35 @@ public class PeerManagerService extends Service {
         public void onPeersAvailable(WifiP2pDeviceList peers) {
             Log.d(TAG, "Peers Available");
             if(nwService != null) {
+                Log.d(TAG, "Binded to New World Service");
+                trustedNeighbors = nwService.getTrustedNeighbors();
+                //if(trustedNeighbors.size() == 0)
+                  //  count++;
                 for (WifiP2pDevice peer : peers.getDeviceList()) {
                     Log.d(TAG, peer.deviceAddress + " " + peer.deviceName);
+                    if(trustedNeighbors.containsKey(peer.deviceAddress)) {
+                        discoverExecutor.shutdownNow();
+                        WifiP2pConfig config = new WifiP2pConfig();
+                        config.deviceAddress = peer.deviceAddress;
+                        mManager.connect(mChannel, config, new WifiP2pManager.ActionListener() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d(TAG, "Connect Success");
+                            }
+
+                            @Override
+                            public void onFailure(int reason) {
+                                Log.d(TAG, "Connect Failed");
+                            }
+                        });
+                    }
                 }
             }
-            else
-                Log.d(TAG, "Not Connected to New World Service");
+            else {
+                Log.d(TAG, "New World Service is null");
+                startService(new Intent(PeerManagerService.this, NewWorldService.class));
+                //bindService(new Intent(PeerManagerService.this, NewWorldService.class), nwConnection, BIND_IMPORTANT);
+            }
         }
     }
 }
