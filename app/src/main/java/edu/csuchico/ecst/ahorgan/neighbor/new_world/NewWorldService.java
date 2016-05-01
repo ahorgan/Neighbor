@@ -40,6 +40,7 @@ public class NewWorldService extends Service {
     private boolean registered = false;
     private boolean discovering = false;
     private boolean blockDiscovering = false;
+    private boolean broadcastingService = false;
     private ServerSocket mServerSocket;
     private Map<String, Integer> neighborPorts = new HashMap<>();
     private Map<String, WifiP2pDevice> trustedNeighbors = new HashMap<>();
@@ -117,7 +118,6 @@ public class NewWorldService extends Service {
     public void onCreate() {
         Log.d(TAG, "Create");
         super.onCreate();
-
         Intent startPM = new Intent(NewWorldService.this, PeerManagerService.class);
         startService(startPM);
         Intent startCM = new Intent(NewWorldService.this, ConnectionManager.class);
@@ -139,9 +139,6 @@ public class NewWorldService extends Service {
             bindService(new Intent(this, PeerManagerService.class), pmConnection, BIND_IMPORTANT);
         if(cmService == null)
             bindService(new Intent(this, ConnectionManager.class), cmConnection, BIND_IMPORTANT);
-        if(!registered) {
-            registerService();
-        }
         if(intent != null && intent.hasExtra("SIG")) {
             switch (intent.getIntExtra("SIG", SIG)) {
                 case SIG:
@@ -149,8 +146,10 @@ public class NewWorldService extends Service {
                     break;
                 case SIG_PEERS_CHANGED:
                     Log.d(TAG, "SIG_PEERS_CHANGED");
-                    if (!blockDiscovering)
+                    if (!blockDiscovering) {
+                        registerService();
                         discoverServices();
+                    }
                     break;
                 case SIG_STOP_DISCOVERY:
                     if (trustedNeighbors.size() > 0) {
@@ -225,6 +224,11 @@ public class NewWorldService extends Service {
         tearDown(false);
     }
 
+    public void unblockDiscovery() {
+        Log.d(TAG, "Unblock Discovery");
+        blockDiscovering = true;
+    }
+
     private void registerService() {
         if(mServerSocket == null) {
             initializeServer();
@@ -243,9 +247,7 @@ public class NewWorldService extends Service {
                         Log.d(TAG, "Added Local Service");
                         mManager.setDnsSdResponseListeners(mChannel, nwServListener, nwTxtListener);
                         registered = true;
-                        if(!discovering) {
-                            discoverServices();
-                        }
+                        broadcastingService = true;
                     }
 
                     @Override

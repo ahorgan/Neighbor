@@ -60,13 +60,7 @@
             android:enabled="true" />
         <service
             android:name=".world.DiscoverService"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </service>
+            android:enabled="true" />
         <service
             android:name=".new_world.NewWorldService"
             android:enabled="true"
@@ -78,7 +72,18 @@
         <service
             android:name=".new_world.ConnectionManager"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
+
+        <activity
+            android:name=".Community.MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

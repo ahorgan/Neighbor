@@ -1,0 +1,123 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@id/fragment_create_profile"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Community.CreateProfileFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal|top">
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName"
+            android:ems="10"
+            android:id="@+id/nameText"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:hint="Name" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/occupationText"
+            android:layout_below="@+id/nameText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:hint="Occupation" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/educationText"
+            android:layout_below="@+id/occupationText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:hint="Education" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="date"
+            android:ems="10"
+            android:id="@+id/birthdateText"
+            android:layout_below="@+id/educationText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:hint="Date of Birth" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:inputType="textMultiLine"
+            android:ems="10"
+            android:id="@+id/messageText"
+            android:layout_below="@+id/genderGroup"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:hint="Message or Other Details (optional)" />
+
+        <RadioGroup
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/birthdateText"
+            android:orientation="horizontal"
+            android:weightSum="1"
+            android:id="@+id/genderGroup"
+            android:clickable="true"
+            android:checkedButton="@id/unspecifiedBtn">
+
+            <RadioButton
+                android:layout_width="83dp"
+                android:layout_height="wrap_content"
+                android:text="male"
+                android:id="@+id/maleBtn"
+                android:checked="false"
+                android:layout_below="@+id/birthdateText"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_marginLeft="70dp"
+                android:layout_marginStart="70dp"
+                android:layout_gravity="left"
+                android:layout_weight="0.76" />
+
+            <RadioButton
+                android:layout_width="89dp"
+                android:layout_height="wrap_content"
+                android:text="female"
+                android:id="@+id/femaleBtn"
+                android:checked="false"
+                android:layout_alignTop="@+id/maleBtn"
+                android:layout_toRightOf="@+id/maleBtn"
+                android:layout_toEndOf="@+id/maleBtn"
+                android:layout_gravity="center_horizontal|left" />
+
+            <RadioButton
+                android:layout_width="126dp"
+                android:layout_height="wrap_content"
+                android:text="unspecified"
+                android:id="@+id/unspecifiedBtn"
+                android:checked="false"
+                android:layout_below="@+id/birthdateText"
+                android:layout_toRightOf="@+id/femaleBtn"
+                android:layout_toEndOf="@+id/femaleBtn"
+                android:layout_gravity="center_horizontal|left" />
+        </RadioGroup>
+    </RelativeLayout>
+</FrameLayout>

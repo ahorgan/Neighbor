@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/edit_profile"
+            android:title="Edit Profile" />
+        <item
+            android:id="@+id/create_event"
+            android:title="Create Event" />
+        <item
+            android:id="@+id/neighbors"
+            android:title="Neighbors" />
+        <item
+            android:id="@+id/events"
+            android:title="Events" />
+    </group>
+
+    <item android:title="Communicate">
+        <menu>
+            <item
+                android:id="@+id/connect"
+                android:title="Connect with Community" />
+            <item
+                android:id="@+id/disconnect"
+                android:title="Disconnect from Community" />
+        </menu>
+    </item>
+
+</menu>

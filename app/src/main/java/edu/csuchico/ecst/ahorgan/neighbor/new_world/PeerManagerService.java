@@ -137,7 +137,8 @@ public class PeerManagerService extends Service {
                 case SIG:
                     Log.d(TAG, "SIG");
                     if (!executorDiscovering) {
-                        discoverExecutor.scheduleAtFixedRate(discoverRunnable, 0, 10000, TimeUnit.MILLISECONDS);
+                        //discoverExecutor.scheduleAtFixedRate(discoverRunnable, 0, 10000, TimeUnit.MILLISECONDS);
+                        discoverExecutor.schedule(discoverRunnable, 0, TimeUnit.MILLISECONDS);
                         executorDiscovering = true;
                     }
                     break;
@@ -210,11 +211,7 @@ public class PeerManagerService extends Service {
                 for (WifiP2pDevice peer : peers.getDeviceList()) {
                     Log.d(TAG, peer.deviceAddress + " " + peer.deviceName);
                     if(trustedNeighbors.containsKey(peer.deviceAddress)) {
-                        /*discoverExecutor.shutdownNow();
-                        executorDiscovering = false;
-                        if(nwService != null) {
-                            nwService.stopDiscovery();
-                        }*/
+                        nwService.stopDiscovery();
                         WifiP2pConfig config = new WifiP2pConfig();
                         config.deviceAddress = peer.deviceAddress;
                         if(!connecting) {
@@ -229,9 +226,7 @@ public class PeerManagerService extends Service {
                                 public void onFailure(int reason) {
                                     Log.d(TAG, "Connect Failed");
                                     connecting = false;
-                                    if(cmService != null) {
-                                        cmService.requestConnectionInfo();
-                                    }
+                                    nwService.unblockDiscovery();
                                 }
                             });
                         }

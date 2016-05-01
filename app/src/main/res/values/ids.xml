@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="fragment_side_menu" type="id">fragment_side_menu</item>
+    <item name="fragment_create_profile" type="id"/>
+</resources>
