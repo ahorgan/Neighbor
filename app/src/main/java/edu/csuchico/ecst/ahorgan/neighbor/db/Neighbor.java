@@ -103,6 +103,10 @@ public class Neighbor {
         }
     }
 
+    public String getDocumentID() {
+        return documentID;
+    }
+
     public Neighbor getGateway() {
         return mGateway;
     }

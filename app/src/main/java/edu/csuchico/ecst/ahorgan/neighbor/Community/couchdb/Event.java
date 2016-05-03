@@ -12,6 +12,7 @@ import com.couchbase.lite.android.AndroidContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
@@ -25,6 +26,8 @@ public class Event {
     public static String DETAILS = "details";
     public static String OWNERPROFILE = "owner_profile";
     public static String HEARDFROMPROFILES = "heard_from_profiles";
+    public static String TAGS = "tags";
+    public static String TYPE = "type";
     private static String TAG = "Event.java";
     private String name;
     private Location location;
@@ -45,8 +48,15 @@ public class Event {
     Event(Context context, String id) {
         initialize(context);
         this.id = id;
-        if(db.getDocument(id) == null)
-            throw new RuntimeException("Document " + id + " not found");
+        if(db.getDocument(id) == null) {
+            try {
+                db.putLocalDocument(id, new HashMap<String, Object>());
+                this.id = id;
+            }
+            catch(CouchbaseLiteException e) {
+                Log.d(TAG, e.getLocalizedMessage());
+            }
+        }
     }
 
     public void initialize(Context context) {
@@ -86,6 +96,7 @@ public class Event {
         }
         Document document = db.getDocument(id);
         Map data = document.getProperties();
+        data.put(TYPE, "event");
         data.putAll(attributes);
         try {
             document.putProperties(data);
@@ -94,6 +105,10 @@ public class Event {
             Log.d(TAG, e.getLocalizedMessage());
         }
         return Event.this;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getName() {

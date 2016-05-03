@@ -18,6 +18,8 @@ import java.util.Stack;
 public class Neighbor {
     public static String PROFILES = "profiles";
     public static String MAC = "mac_address";
+    public static String TYPE = "type";
+    public static String LINKS = "links";
     private static String TAG = "Neighbor.java";
     private String mac;
     private ArrayList<Profile> profiles;
@@ -28,15 +30,30 @@ public class Neighbor {
 
     Neighbor(Context context, String mac) {
         initialize(context);
-        this.mac = mac;
+        this.id = mac;
         profiles = new ArrayList<>();
         links = new ArrayList<>();
+        if(db.getDocument(id) == null) {
+            try {
+                db.putLocalDocument(mac, new HashMap<String, Object>());
+            }
+            catch(CouchbaseLiteException e) {
+                Log.d(TAG, e.getLocalizedMessage());
+            }
+        }
     }
 
     Neighbor(String id, Context context) {
         initialize(context);this.id = id;
-        if(db.getDocument(id) == null)
-            throw new RuntimeException("Document " + id + " not found");
+        if(db.getDocument(id) == null) {
+            try {
+                db.putLocalDocument(id, new HashMap<String, Object>());
+                this.id = id;
+            }
+            catch(CouchbaseLiteException e) {
+                Log.d(TAG, e.getLocalizedMessage());
+            }
+        }
     }
 
     public void initialize(Context context) {
@@ -69,6 +86,7 @@ public class Neighbor {
         Document document = db.getDocument(id);
         Map data = document.getProperties();
         data.putAll(attributes);
+        data.put(TYPE, "neighbor");
         try {
             document.putProperties(data);
         }
@@ -83,6 +101,10 @@ public class Neighbor {
         for(Event evnt : profile.getEvents()) {
             links.add(evnt.getOwnerProfile().getOwnerNeighbor());
         }
+    }
+
+    public String getId() {
+        return id;
     }
 
     public ArrayList<Neighbor> getLinks() {

@@ -21,13 +21,16 @@ import edu.csuchico.ecst.ahorgan.neighbor.R;
  */
 public class Profile {
     private static String TAG = "Profile.java";
-    public final String NAME = "name";
-    public final String OCCUPATION = "occupation";
-    public final String EDUCATION = "education";
-    public final String BIRTHDATE = "birthdate";
-    public final String GENDER = "gender";
-    public final String MESSAGES = "messages";
-    public final String EVENTS = "events";
+    public static String NAME = "name";
+    public static String OCCUPATION = "occupation";
+    public static String EDUCATION = "education";
+    public static String BIRTHDATE = "birthdate";
+    public static String GENDER = "gender";
+    public static String MESSAGES = "messages";
+    public static String EVENTS = "events";
+    public static String CONTEXT = "context";
+    public static String TYPE = "type";
+    public static String TAGS = "tags";
     private String name;
     private String occupation;
     private String education;
@@ -35,6 +38,7 @@ public class Profile {
     private String gender;
     private Stack<String> messages;
     private ArrayList<Event> events;
+    private ArrayList<String> tags;
     private Neighbor owner;
     private String id;
     private com.couchbase.lite.Database db;
@@ -48,9 +52,15 @@ public class Profile {
 
     Profile(Context context, String id) {
         initialize(context);
-        this.id = id;
-        if(db.getDocument(id) == null)
-            throw new RuntimeException("Document " + id + " not found");
+        if(db.getDocument(id) == null) {
+            try {
+                db.putLocalDocument(id, new HashMap<String, Object>());
+                this.id = id;
+            }
+            catch(CouchbaseLiteException e) {
+                Log.d(TAG, e.getLocalizedMessage());
+            }
+        }
     }
 
     public void initialize(Context context) {
@@ -95,6 +105,7 @@ public class Profile {
         Document document = db.getDocument(id);
         Map data = document.getProperties();
         data.putAll(attributes);
+        data.put(TYPE, "profile");
         try {
             document.putProperties(data);
         }
@@ -102,6 +113,10 @@ public class Profile {
             Log.d(TAG, e.getLocalizedMessage());
         }
         return Profile.this;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getName() {

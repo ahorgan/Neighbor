@@ -81,7 +81,7 @@
             android:weightSum="1"
             android:id="@+id/genderGroup"
             android:clickable="true"
-            android:checkedButton="@id/unspecifiedBtn">
+            android:checkedButton="@+id/unspecifiedBtn">
 
             <RadioButton
                 android:layout_width="83dp"
@@ -112,7 +112,7 @@
                 android:layout_width="126dp"
                 android:layout_height="wrap_content"
                 android:text="unspecified"
-                android:id="@+id/unspecifiedBtn"
+                android:id="@id/unspecifiedBtn"
                 android:checked="false"
                 android:layout_below="@+id/birthdateText"
                 android:layout_toRightOf="@+id/femaleBtn"
