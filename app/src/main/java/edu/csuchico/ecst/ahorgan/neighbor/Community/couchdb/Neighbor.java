@@ -98,9 +98,6 @@ public class Neighbor {
 
     private void addProfile(Profile profile) {
         profiles.add(profile);
-        for(Event evnt : profile.getEvents()) {
-            links.add(evnt.getOwnerProfile().getOwnerNeighbor());
-        }
     }
 
     public String getId() {

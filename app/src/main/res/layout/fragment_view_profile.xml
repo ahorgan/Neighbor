@@ -1,0 +1,112 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="edu.csuchico.ecst.ahorgan.neighbor.Community.ViewProfileFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="left|top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/name"
+            android:id="@+id/ProfileNameText"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_toStartOf="@+id/ProfileContextText"
+            android:layout_toLeftOf="@+id/ProfileContextText" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Occupation: "
+            android:id="@+id/ProfileOccupationLabelText"
+            android:layout_below="@+id/ProfileNameText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Occupation"
+            android:id="@+id/ProfileOccupationText"
+            android:layout_alignTop="@+id/ProfileOccupationLabelText"
+            android:layout_toRightOf="@+id/ProfileOccupationLabelText"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Education: "
+            android:id="@+id/ProfileEducationLabelText"
+            android:layout_below="@+id/ProfileOccupationLabelText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Education"
+            android:id="@+id/ProfileEducationText"
+            android:layout_alignTop="@+id/ProfileEducationLabelText"
+            android:layout_toRightOf="@+id/ProfileEducationLabelText"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="Context"
+            android:id="@+id/ProfileContextText"
+            android:layout_alignParentTop="true"
+            android:layout_alignRight="@+id/ProfileOccupationText"
+            android:layout_alignEnd="@+id/ProfileOccupationText" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Message"
+            android:id="@+id/ProfileMessageText"
+            android:layout_below="@+id/ProfileAgeLabelText"
+            android:layout_alignRight="@+id/ProfileOccupationText"
+            android:layout_alignEnd="@+id/ProfileOccupationText"
+            android:layout_marginTop="38dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text=" Age: "
+            android:id="@+id/ProfileAgeLabelText"
+            android:layout_below="@+id/ProfileEducationLabelText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Age"
+            android:layout_alignTop="@+id/ProfileAgeLabelText"
+            android:layout_toRightOf="@+id/ProfileAgeLabelText"
+            android:layout_toEndOf="@+id/ProfileAgeLabelText"
+            android:id="@+id/ProfileAgeText" />
+    </RelativeLayout>
+</FrameLayout>

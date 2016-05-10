@@ -3,17 +3,23 @@ package edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb;
 import android.content.Context;
 import android.util.Log;
 
+import com.couchbase.lite.AsyncTask;
 import com.couchbase.lite.CouchbaseLiteException;
+import com.couchbase.lite.Document;
 import com.couchbase.lite.Emitter;
 import com.couchbase.lite.Manager;
 import com.couchbase.lite.Mapper;
+import com.couchbase.lite.Query;
+import com.couchbase.lite.QueryEnumerator;
 import com.couchbase.lite.QueryOptions;
+import com.couchbase.lite.QueryRow;
 import com.couchbase.lite.View;
 import com.couchbase.lite.android.AndroidContext;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -35,16 +41,18 @@ public class Database {
     View profilesbynameView;
     View profilesbycontextView;
     View profilesbyoccupationView;
+    View profilesbyownerView;
     View profilesbyeducationView;
     View profilesfemaleView;
     View profilesmaleView;
     View neighborsView;
     View tagsView;
+    static Database thisDatabase;
 
     Mapper eventsbydateMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("event")) {
+            if(document.containsKey("type") && document.get("type").equals("event")) {
                 emitter.emit(document.get(Event.DATETIME), document);
             }
         }
@@ -53,7 +61,7 @@ public class Database {
     Mapper eventsbyownerMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("event")) {
+            if(document.containsKey("type") && document.get("type").equals("event")) {
                 emitter.emit(document.get(Event.OWNERPROFILE), document);
             }
         }
@@ -62,7 +70,7 @@ public class Database {
     Mapper eventsbylocationMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("event")) {
+            if(document.containsKey("type") && document.get("type").equals("event")) {
                 emitter.emit(document.get(Event.LOCATION), document);
             }
         }
@@ -71,8 +79,8 @@ public class Database {
     Mapper profilesbyownerMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")) {
-                emitter.emit(Profile.NAME, document);
+            if(document.containsKey("type") && document.get("type").equals("profile")) {
+                emitter.emit(Profile.OWNER, document);
             }
         }
     };
@@ -80,7 +88,7 @@ public class Database {
     Mapper profilesbycontextMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")) {
+            if(document.containsKey("type") && document.get("type").equals("profile")) {
                 emitter.emit(Profile.CONTEXT, document);
             }
         }
@@ -89,7 +97,7 @@ public class Database {
     Mapper profilesbynameMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")) {
+            if(document.containsKey("type") && document.get("type").equals("profile")) {
                 emitter.emit(Profile.NAME, document);
             }
         }
@@ -98,7 +106,7 @@ public class Database {
     Mapper profilesbyoccupationMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")) {
+            if(document.containsKey("type") && document.get("type").equals("profile")) {
                 emitter.emit(Profile.OCCUPATION, document);
             }
         }
@@ -107,7 +115,7 @@ public class Database {
     Mapper profilesbyeducationMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")) {
+            if(document.containsKey("type") && document.get("type").equals("profile")) {
                 emitter.emit(Profile.EDUCATION, document);
             }
         }
@@ -116,7 +124,7 @@ public class Database {
     Mapper profilesfemaleMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")
+            if(document.containsKey("type") && document.get("type").equals("profile")
                     && document.get("gender").equals("female")) {
                 emitter.emit(Profile.BIRTHDATE, document);
             }
@@ -126,7 +134,7 @@ public class Database {
     Mapper profilesmaleMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile")
+            if(document.containsKey("type") && document.get("type").equals("profile")
                     && document.get("gender").equals("male")) {
                 emitter.emit(Profile.BIRTHDATE, document);
             }
@@ -136,7 +144,7 @@ public class Database {
     Mapper neighborsMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("neighbor")) {
+            if(document.containsKey("type") && document.get("type").equals("neighbor")) {
                 List<Object>key = new ArrayList<>();
                 key.add(document.get(Neighbor.MAC));
 
@@ -151,7 +159,7 @@ public class Database {
     Mapper tagsMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.get("type").equals("profile") || document.get("type").equals("event")) {
+            if(document.containsKey("type") && document.get("type").equals("profile") || document.get("type").equals("event")) {
                 List<Object>key = new ArrayList<>();
                 key.add(document.get("type"));
                 key.add(document.get("tags"));
@@ -163,7 +171,14 @@ public class Database {
         }
     };
 
-    public Database(Context context) {
+    public final static Database getInstance(Context context) {
+        if(thisDatabase == null) {
+            thisDatabase = new Database(context);
+        }
+        return thisDatabase;
+    }
+
+    private Database(Context context) {
         mContext = context;
         try {
             manager = getManagerInstance();
@@ -179,42 +194,64 @@ public class Database {
         }
 
         profilesbynameView = db.getView("profiles_by_name");
-        profilesbynameView.setMap(profilesbynameMapper, "1");
+        if (profilesbynameView.getMap() == null)
+            profilesbynameView.setMap(profilesbynameMapper, "1");
 
         profilesbyoccupationView = db.getView("profiles_by_occupation");
-        profilesbyoccupationView.setMap(profilesbyoccupationMapper, "1");
+        if (profilesbyoccupationView.getMap()  == null)
+            profilesbyoccupationView.setMap(profilesbyoccupationMapper, "1");
 
         profilesbyeducationView = db.getView("profiles_by_education");
-        profilesbyeducationView.setMap(profilesbyeducationMapper, "1");
+        if (profilesbyeducationView.getMap() == null)
+            profilesbyeducationView.setMap(profilesbyeducationMapper, "1");
 
         profilesbycontextView = db.getView("profiles_by_context");
-        profilesbycontextView.setMap(profilesbycontextMapper, "1");
+        if (profilesbycontextView.getMap() == null)
+            profilesbycontextView.setMap(profilesbycontextMapper, "1");
+
+        profilesbyownerView = db.getView("profiles_by_owner");
+        if (profilesbyownerView.getMap() == null)
+            profilesbyownerView.setMap(new Mapper() {
+                @Override
+                public void map(Map<String, Object> document, Emitter emitter) {
+                    if(document.containsKey("type") && document.get("type").equals("profile")) {
+                        emitter.emit(document.get(Profile.OWNER), document);
+                    }
+                }
+            }, "1");
 
         profilesfemaleView = db.getView("profiles_female");
-        profilesfemaleView.setMap(profilesfemaleMapper, "1");
+        if (profilesfemaleView.getMap() == null)
+            profilesfemaleView.setMap(profilesfemaleMapper, "1");
 
         profilesmaleView = db.getView("profiles_male");
-        profilesmaleView.setMap(profilesmaleMapper, "1");
+        if (profilesmaleView.getMap() == null)
+            profilesmaleView.setMap(profilesmaleMapper, "1");
 
         eventsbydateView = db.getView("events_by_date");
-        eventsbydateView.setMap(eventsbydateMapper, "1");
+        if (eventsbydateView.getMap() == null)
+            eventsbydateView.setMap(eventsbydateMapper, "1");
 
         eventsbylocationView = db.getView("events_by_location");
-        eventsbylocationView.setMap(eventsbylocationMapper, "1");
+        if (eventsbylocationView.getMap() == null)
+            eventsbylocationView.setMap(eventsbylocationMapper, "1");
 
         eventsbyownerView = db.getView("events_by_owner");
-        eventsbyownerView.setMap(eventsbyownerMapper, "1");
+        if (eventsbyownerView.getMap() == null)
+            eventsbyownerView.setMap(eventsbyownerMapper, "1");
 
         neighborsView = db.getView("neighbors");
-        neighborsView.setMap(neighborsMapper, "1");
+        if (neighborsView.getMap() == null)
+            neighborsView.setMap(neighborsMapper, "1");
 
         tagsView = db.getView("tags");
-        tagsView.setMap(tagsMapper, "1");
+        if (tagsView.getMap() == null)
+            tagsView.setMap(tagsMapper, "1");
         
     }
 
     public final static com.couchbase.lite.Database getDatabaseInstance() throws CouchbaseLiteException {
-        if ((db == null) & (manager != null)) {
+        if ((db == null) && (manager != null)) {
             db = manager.getDatabase("community_db");
         }
         return db;
@@ -235,12 +272,26 @@ public class Database {
         }
     }
 
-    public Event addEvent(String id, Map<String, Object> properties) {
+    public void addDocument(String id, Map<String, Object> properties) {
+        try {
+            Document doc;
+            if(id == null)
+                doc = db.createDocument();
+            else
+                doc = db.getDocument(id);
+            doc.putProperties(properties);
+        }
+        catch(CouchbaseLiteException e) {
+            Log.d(TAG, e.getLocalizedMessage());
+        }
+    }
+
+    public String addEvent(String id, Map<String, Object> properties) {
         if(id != null) {
-            return new Event(mContext, id).updateAttributes(properties);
+            return new Event(mContext, id).updateAttributes(properties).getId();
         }
         else {
-            return new Event(mContext).updateAttributes(properties);
+            return new Event(mContext).updateAttributes(properties).getId();
         }
     }
 
@@ -251,12 +302,84 @@ public class Database {
         return null;
     }
 
-    public Profile addProfile(String id, Map<String, Object> properties) {
+    public String addProfile(String id, Map<String, Object> properties) {
+
         if(id != null) {
-            return new Profile(mContext, id).updateAttributes(properties);
+            Profile profile = new Profile(mContext, id, properties);
+            return profile.getId();
         }
         else {
-            return new Profile(mContext).updateAttributes(properties);
+            Profile profile = new Profile(mContext, properties);
+            return profile.getId();
+        }
+    }
+
+    public View getEventsbydateView() {
+        return eventsbydateView;
+    }
+
+    public View getEventsbylocationView() {
+        return eventsbylocationView;
+    }
+
+    public View getEventsbyownerView() {
+        return eventsbyownerView;
+    }
+
+    public View getProfilesbycontextView() {
+        return profilesbycontextView;
+    }
+
+    public View getProfilesbyeducationView() {
+        return profilesbyeducationView;
+    }
+
+    public View getProfilesbynameView() {
+        return profilesbynameView;
+    }
+
+    public View getProfilesbyoccupationView() {
+        return profilesbyoccupationView;
+    }
+
+    public View getProfilesbyownerView() {
+        return db.getView("profiles_by_owner");
+    }
+
+    public View getProfilesfemaleView() {
+        return profilesfemaleView;
+    }
+
+    public View getProfilesmaleView() {
+        return profilesmaleView;
+    }
+
+    public View getNeighborsView() {
+        return neighborsView;
+    }
+
+    public void printQueryToLog(com.couchbase.lite.View view) {
+        // Get instance of Query from factory…
+        Log.d(TAG, "Print Query To Log:");
+        Query query = view.createQuery();
+        ArrayList<Object> keys = new ArrayList<>();
+        keys.add("me");
+        query.setKeys(keys);
+        query.setLimit(20);
+        try {
+            QueryEnumerator results = query.run();
+       /* Iterate through the rows to get the document ids */
+            for (Iterator<QueryRow> it = results; it.hasNext();) {
+                Log.d(TAG, "Next row");
+                QueryRow row = it.next();
+                Map<String, Object> profile_properties = (Map) row.getValue();
+                for (Map.Entry property : profile_properties.entrySet()) {
+                    Log.d(TAG, property.getKey().toString() + " : " +
+                            property.getValue().toString());
+                }
+            }
+        } catch (CouchbaseLiteException e) {
+            Log.e(TAG, "Error querying view.", e);
         }
     }
 }

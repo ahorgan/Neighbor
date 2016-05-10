@@ -58,7 +58,7 @@
             android:layout_alignParentStart="true"
             android:layout_alignParentRight="true"
             android:layout_alignParentEnd="true"
-            android:hint="Date of Birth" />
+            android:hint="Date of Birth YYYY/MM/DD" />
 
         <EditText
             android:layout_width="match_parent"
@@ -66,12 +66,10 @@
             android:inputType="textMultiLine"
             android:ems="10"
             android:id="@+id/messageText"
-            android:layout_below="@+id/genderGroup"
+            android:hint="Message or Other Details (optional)"
+            android:layout_below="@+id/contextText"
             android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentEnd="true"
-            android:hint="Message or Other Details (optional)" />
+            android:layout_alignParentStart="true" />
 
         <RadioGroup
             android:layout_width="wrap_content"
@@ -119,5 +117,16 @@
                 android:layout_toEndOf="@+id/femaleBtn"
                 android:layout_gravity="center_horizontal|left" />
         </RadioGroup>
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/contextText"
+            android:layout_below="@+id/genderGroup"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:hint="Context(general, work, school, dating, etc)"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true" />
     </RelativeLayout>
 </FrameLayout>

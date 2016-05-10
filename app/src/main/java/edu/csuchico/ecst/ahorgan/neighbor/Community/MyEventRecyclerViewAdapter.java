@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import edu.csuchico.ecst.ahorgan.neighbor.Community.EventFragment.OnListFragmentInteractionListener;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.dummy.DummyContent.DummyItem;
+import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent.DummyItem;
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 
 import java.util.List;

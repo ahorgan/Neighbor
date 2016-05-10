@@ -1,4 +1,4 @@
-package edu.csuchico.ecst.ahorgan.neighbor.Community.dummy;
+package edu.csuchico.ecst.ahorgan.neighbor.Community.items;
 
 import java.util.ArrayList;
 import java.util.HashMap;

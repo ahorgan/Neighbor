@@ -1,6 +1,7 @@
 package edu.csuchico.ecst.ahorgan.neighbor.Community;
 
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentManager;
@@ -15,19 +16,26 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     private static String TAG = "MainActivity";
-    private final FragmentManager fragmentManager = getSupportFragmentManager();
-    private final CreateProfileOnClick createProfileOnClick = new CreateProfileOnClick();
-    private final CreateEventOnClick createEventOnClick = new CreateEventOnClick();
-    private final ProfilesOnClick profilesOnClick = new ProfilesOnClick();
-    private final EventsOnClick eventsOnClick = new EventsOnClick();
-    private final ConnectOnClick connectOnClick = new ConnectOnClick();
-    private final DisconnectOnClick disconnectOnClick = new DisconnectOnClick();
-    private final CreateProfileFragment createProfileFragment = new CreateProfileFragment();
+    private FragmentManager fragmentManager = getSupportFragmentManager();
+    private CreateProfileOnClick createProfileOnClick = new CreateProfileOnClick();
+    private CreateEventOnClick createEventOnClick = new CreateEventOnClick();
+    private ProfilesOnClick profilesOnClick = new ProfilesOnClick();
+    private ViewProfileOnClick viewProfileOnClick = new ViewProfileOnClick();
+    private EventsOnClick eventsOnClick = new EventsOnClick();
+    private ConnectOnClick connectOnClick = new ConnectOnClick();
+    private DisconnectOnClick disconnectOnClick = new DisconnectOnClick();
+    private CreateProfileFragment createProfileFragment = new CreateProfileFragment();
+    private ProfileFragment viewProfilesFragment = new ProfileFragment();
+    private ViewProfileFragment viewProfileFragment = new ViewProfileFragment();
+    private FloatingActionButton fab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,13 +46,6 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -57,27 +58,25 @@ public class MainActivity extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
 
         if (findViewById(R.id.fragment_container) != null) {
-            if (savedInstanceState != null) {
-                Log.d(TAG, "savedInstanceState != null");
-                return;
-            }
             Log.d(TAG, "Create createprofilefragment");
-
+            if(savedInstanceState != null)
+                return;
             // In case this activity was started with special instructions from an
             // Intent, pass the Intent's extras to the fragment as arguments
             createProfileFragment.setArguments(getIntent().getExtras());
+            viewProfilesFragment.setArguments(getIntent().getExtras());
 
             // Add the fragment to the 'fragment_container' FrameLayout
             fragmentManager.beginTransaction()
                     .add(R.id.fragment_container, createProfileFragment)
                     .commit();
+
+            fab.setOnClickListener(createProfileOnClick);
         }
         else {
             Log.d(TAG, "Cannot find R.id.fragment_create_profile");
         }
 
-        FloatingActionButton floatingActionButton = (FloatingActionButton) findViewById(R.id.fab);
-        floatingActionButton.setOnClickListener(createProfileOnClick);
     }
 
     @Override
@@ -112,12 +111,31 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
+    public void onProfileSelected(Map<String, Object> item) {
+        if(fab == null)
+            fab = (FloatingActionButton)findViewById(R.id.fab);
+        fab.setOnClickListener(viewProfileOnClick);
+        Log.d(TAG, "Profile Selected:");
+        HashMap hashItem = new HashMap();
+        hashItem.putAll(item);
+        for(Object entry : hashItem.entrySet()) {
+            Log.d(TAG, ((HashMap.Entry)entry).getKey() + " : " + ((HashMap.Entry)entry).getValue());
+        }
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("ITEM_MAP", hashItem);
+        ViewProfileFragment newView = new ViewProfileFragment();
+        newView.setArguments(bundle);
+        fragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, newView)
+                .commit();
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-        FloatingActionButton fab = (FloatingActionButton)findViewById(R.id.fab);
+        fab = (FloatingActionButton)findViewById(R.id.fab);
         // set new on click listener depending on which item clicked
         if (id == R.id.edit_profile) {
             Log.d(TAG, "edit profile selected");
@@ -125,7 +143,14 @@ public class MainActivity extends AppCompatActivity
             fragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, createProfileFragment)
                     .commit();
-        } else if (id == R.id.create_event) {
+        }
+        else if(id == R.id.view_profiles) {
+            Log.d(TAG, "view profiles selected");
+            fab.setOnClickListener(profilesOnClick);
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    viewProfilesFragment).addToBackStack(null).commit();
+        }
+        else if (id == R.id.create_event) {
             Log.d(TAG, "create event selected");
             fab.setOnClickListener(createEventOnClick);
         } else if (id == R.id.neighbors) {
@@ -150,9 +175,14 @@ public class MainActivity extends AppCompatActivity
     class CreateProfileOnClick implements View.OnClickListener {
         @Override
         public void onClick(View v) {
+            if(fab == null)
+                fab = (FloatingActionButton)findViewById(R.id.fab);
             Log.d(TAG, "create profile button clicked");
             //int id = fragmentManager.getBackStackEntryAt(current_fragment_id).getId();
             createProfileFragment.updateProfile();
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    viewProfilesFragment).commit();
+            fab.setOnClickListener(profilesOnClick);
         }
     }
 
@@ -167,6 +197,25 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onClick(View v) {
             Log.d(TAG, "profiles button clicked");
+            if(fab == null)
+                fab = (FloatingActionButton) findViewById(R.id.fab);
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    createProfileFragment).commit();
+            fab.setOnClickListener(createProfileOnClick);
+        }
+    }
+
+    class ViewProfileOnClick implements  View.OnClickListener {
+        @Override
+        public void onClick(View v) {
+            if(fab == null)
+                fab = (FloatingActionButton) findViewById(R.id.fab);
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("ITEM_MAP", (HashMap)viewProfileFragment.getItem());
+            createProfileFragment.setArguments(bundle);
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    createProfileFragment).commit();
+            fab.setOnClickListener(createProfileOnClick);
         }
     }
 

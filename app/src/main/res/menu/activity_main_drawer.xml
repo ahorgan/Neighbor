@@ -6,6 +6,9 @@
             android:id="@+id/edit_profile"
             android:title="Edit Profile" />
         <item
+            android:id="@+id/view_profiles"
+            android:title="View My Profiles" />
+        <item
             android:id="@+id/create_event"
             android:title="Create Event" />
         <item

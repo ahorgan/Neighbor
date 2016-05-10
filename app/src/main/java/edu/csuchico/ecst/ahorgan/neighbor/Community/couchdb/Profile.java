@@ -26,9 +26,10 @@ public class Profile {
     public static String EDUCATION = "education";
     public static String BIRTHDATE = "birthdate";
     public static String GENDER = "gender";
-    public static String MESSAGES = "messages";
+    public static String MESSAGE = "message";
     public static String EVENTS = "events";
     public static String CONTEXT = "context";
+    public static String OWNER = "owner";
     public static String TYPE = "type";
     public static String TAGS = "tags";
     private String name;
@@ -36,30 +37,34 @@ public class Profile {
     private String education;
     private Date birthDate;
     private String gender;
-    private Stack<String> messages;
+    private String message;
     private ArrayList<Event> events;
     private ArrayList<String> tags;
-    private Neighbor owner;
+    private String owner;
     private String id;
     private com.couchbase.lite.Database db;
     private Manager manager;
 
-    Profile(Context context) {
+    Profile(Context context, Map<String, Object> properties) {
         initialize(context);
         Document document = db.createDocument();
+        try {
+            document.putProperties(properties);
+        }
+        catch(CouchbaseLiteException e) {
+            Log.d(TAG, e.getLocalizedMessage());
+        }
         id = document.getId();
     }
 
-    Profile(Context context, String id) {
+    Profile(Context context, String id, Map<String, Object> properties) {
         initialize(context);
-        if(db.getDocument(id) == null) {
-            try {
-                db.putLocalDocument(id, new HashMap<String, Object>());
-                this.id = id;
-            }
-            catch(CouchbaseLiteException e) {
-                Log.d(TAG, e.getLocalizedMessage());
-            }
+        Document doc = db.getDocument(id);
+        try {
+            doc.putProperties(properties);
+        }
+        catch(CouchbaseLiteException e) {
+            Log.d(TAG, e.getLocalizedMessage());
         }
     }
 
@@ -77,7 +82,6 @@ public class Profile {
             Log.d(TAG, e.getLocalizedMessage());
         }
         events = new ArrayList<>();
-        messages = new Stack<>();
     }
 
     public Profile updateAttributes(Map<String, Object> attributes) {
@@ -99,11 +103,16 @@ public class Profile {
         if(attributes.containsKey(EVENTS)) {
             this.events.addAll((ArrayList<Event>)attributes.get(EVENTS));
         }
-        if(attributes.containsKey(MESSAGES)) {
-            this.messages.addAll((Stack<String>)attributes.get(MESSAGES));
+        if(attributes.containsKey(MESSAGE)) {
+            this.message = (String)attributes.get(MESSAGE);
+        }
+        if(attributes.containsKey(OWNER)) {
+            this.owner = (String)attributes.get(OWNER);
         }
         Document document = db.getDocument(id);
-        Map data = document.getProperties();
+
+        Map<String, Object> data = new HashMap();
+        data = document.getProperties();
         data.putAll(attributes);
         data.put(TYPE, "profile");
         try {
@@ -143,11 +152,11 @@ public class Profile {
         return events;
     }
 
-    public Stack<String> getMessages() {
-        return messages;
+    public String getMessage() {
+        return message;
     }
 
-    public Neighbor getOwnerNeighbor() {
+    public String getOwnerNeighbor() {
         return owner;
     }
 }
