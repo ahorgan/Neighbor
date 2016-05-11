@@ -15,12 +15,15 @@ import android.widget.TextView;
 
 import com.couchbase.lite.AsyncTask;
 import com.couchbase.lite.CouchbaseLiteException;
+import com.couchbase.lite.DocumentChange;
+import com.couchbase.lite.LiveQuery;
 import com.couchbase.lite.Query;
 import com.couchbase.lite.QueryEnumerator;
 import com.couchbase.lite.QueryOptions;
 import com.couchbase.lite.QueryRow;
 import com.couchbase.lite.util.Log;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -47,6 +50,7 @@ public class ProfileFragment extends Fragment {
     private static Database db;
     private List<Map<String, Object>> items;
     private RecyclerView recyclerView;
+    private MyProfileRecyclerViewAdapter mAdapter;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -70,31 +74,8 @@ public class ProfileFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
-        items = new ArrayList<>();
-        db = Database.getInstance(getContext());
         if (getArguments() != null) {
             mColumnCount = getArguments().getInt(ARG_COLUMN_COUNT);
-        }
-        Query query = db.getProfilesbyownerView().createQuery();
-        ArrayList<Object>key = new ArrayList<>();
-        key.add("me");
-        query.setKeys(key);
-        try {
-            QueryEnumerator result = query.run();
-            if(result.getCount() > 0) {
-                Log.d(TAG, "result size: " + result.getCount());
-                for (Iterator<QueryRow> it = result; it.hasNext(); ) {
-                    QueryRow row = it.next();
-                    Log.d(TAG, row.toString());
-                    items.add((Map)row.getValue());
-                }
-            }
-            else {
-                Log.d(TAG, "No Results");
-            }
-        }
-        catch(CouchbaseLiteException e) {
-            Log.d(TAG, e.getLocalizedMessage());
         }
     }
 
@@ -113,7 +94,9 @@ public class ProfileFragment extends Fragment {
             } else {
                 recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
             }
-            recyclerView.setAdapter(new MyProfileRecyclerViewAdapter(items, mListener));
+            List<Map<String, Object>> items = new ArrayList<>();
+            mAdapter = new MyProfileRecyclerViewAdapter(items, mListener);
+            recyclerView.setAdapter(mAdapter);
         }
         return view;
     }
@@ -134,6 +117,7 @@ public class ProfileFragment extends Fragment {
                 }
             };
         }
+
     }
 
     @Override

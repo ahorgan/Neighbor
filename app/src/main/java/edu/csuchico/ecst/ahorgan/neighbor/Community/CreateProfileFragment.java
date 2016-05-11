@@ -50,17 +50,17 @@ public class CreateProfileFragment extends Fragment {
     private String mParam2;
 
     private OnFragmentInteractionListener mListener;
-    private EditText nameText;
-    private EditText occupationText;
-    private EditText eduText;
-    private EditText birthdateText;
-    private RadioGroup genderGroup;
-    private EditText contextText;
-    private RadioButton genderBtn;
-    private EditText messageText;
+    private static EditText nameText;
+    private static EditText occupationText;
+    private static EditText eduText;
+    private static EditText birthdateText;
+    private static RadioGroup genderGroup;
+    private static EditText contextText;
+    private static RadioButton genderBtn;
+    private static EditText messageText;
     private Map<String, Object> item;
-
-    private String id;
+    private View view;
+    String id;
 
     public CreateProfileFragment() {
         // Required empty public constructor
@@ -92,7 +92,29 @@ public class CreateProfileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_create_profile, container, false);
+        view = inflater.inflate(R.layout.fragment_create_profile, container, false);
+        nameText = (EditText) view.findViewById(R.id.nameText);
+        occupationText = (EditText) view.findViewById(R.id.occupationText);
+        eduText = (EditText) view.findViewById(R.id.educationText);
+        birthdateText = (EditText) view.findViewById(R.id.birthdateText);
+        genderGroup = (RadioGroup) view.findViewById(R.id.genderGroup);
+        contextText = (EditText) view.findViewById(R.id.contextText);
+        messageText = (EditText) view.findViewById(R.id.messageText);
+
+        if(item != null) {
+            nameText.setText((String) item.get(Profile.NAME));
+            occupationText.setText((String) item.get(Profile.OCCUPATION));
+            eduText.setText((String) item.get(Profile.EDUCATION));
+            birthdateText.setText((String) item.get(Profile.BIRTHDATE));
+            if(item.containsKey(Profile.GENDER) && item.get(Profile.GENDER).equals("female"))
+                genderGroup.check(R.id.femaleBtn);
+            else if(item.containsKey(Profile.GENDER) && item.get(Profile.GENDER).equals("male"))
+                genderGroup.check(R.id.maleBtn);
+            else
+                genderGroup.check(R.id.unspecifiedBtn);
+            messageText.setText((String) item.get(Profile.MESSAGE));
+        }
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -106,28 +128,7 @@ public class CreateProfileFragment extends Fragment {
     public void onAttach(Context context) {
         super.onAttach(context);
         mContext = context;
-        nameText = (EditText) getActivity().findViewById(R.id.nameText);
-        occupationText = (EditText) getActivity().findViewById(R.id.occupationText);
-        eduText = (EditText) getActivity().findViewById(R.id.educationText);
-        birthdateText = (EditText) getActivity().findViewById(R.id.birthdateText);
-        genderGroup = (RadioGroup) getActivity().findViewById(R.id.genderGroup);
-        contextText = (EditText) getActivity().findViewById(R.id.contextText);
-        messageText = (EditText) getActivity().findViewById(R.id.messageText);
 
-        if(item != null) {
-            id = (String) item.get("_id");
-            nameText.setText((String) item.get(Profile.NAME));
-            occupationText.setText((String) item.get(Profile.OCCUPATION));
-            eduText.setText((String) item.get(Profile.EDUCATION));
-            birthdateText.setText((String) item.get(Profile.BIRTHDATE));
-            if(item.get("GENDER").equals("female"))
-                genderGroup.check(R.id.femaleBtn);
-            else if(item.get("GENDER").equals("male"))
-                genderGroup.check(R.id.maleBtn);
-            else
-                genderGroup.check(R.id.unspecifiedBtn);
-            messageText.setText((String) item.get(Profile.MESSAGE));
-        }
         if (context instanceof OnFragmentInteractionListener) {
             mListener = (OnFragmentInteractionListener) context;
         } else {
@@ -173,6 +174,10 @@ public class CreateProfileFragment extends Fragment {
         messageText = (EditText) getActivity().findViewById(R.id.messageText);
         genderBtn = (RadioButton) getActivity().findViewById(genderGroup.getCheckedRadioButtonId());
 
+        if(item != null && item.containsKey("_id"))
+            Log.d(TAG, (String)item.get("_id"));
+        else
+            Log.d(TAG, "New Profile: ");
         Log.d(TAG, nameText.getText().toString());
         Log.d(TAG, occupationText.getText().toString());
         Log.d(TAG, eduText.getText().toString());
@@ -181,22 +186,24 @@ public class CreateProfileFragment extends Fragment {
         Log.d(TAG, contextText.getText().toString());
         Log.d(TAG, messageText.getText().toString());
 
-        if(newProfile == null)
-            newProfile = new HashMap<>();
+        Map<String, Object> profile = new HashMap<>();
 
-        newProfile.put(Profile.NAME, nameText.getText().toString());
-        newProfile.put(Profile.OCCUPATION, occupationText.getText().toString());
-        newProfile.put(Profile.EDUCATION, eduText.getText().toString());
-        newProfile.put(Profile.BIRTHDATE, birthdateText.getText().toString());
-        newProfile.put(Profile.GENDER, genderBtn.toString());
-        newProfile.put(Profile.CONTEXT, contextText.getText().toString());
-        newProfile.put(Profile.MESSAGE, messageText.getText().toString());
-        newProfile.put(Profile.OWNER, "me");
-        newProfile.put(Profile.TYPE, "profile");
+        profile.put(Profile.NAME, nameText.getText().toString());
+        profile.put(Profile.OCCUPATION, occupationText.getText().toString());
+        profile.put(Profile.EDUCATION, eduText.getText().toString());
+        profile.put(Profile.BIRTHDATE, birthdateText.getText().toString());
+        profile.put(Profile.GENDER, genderBtn.getText().toString());
+        profile.put(Profile.CONTEXT, contextText.getText().toString());
+        profile.put(Profile.MESSAGE, messageText.getText().toString());
+        profile.put(Profile.OWNER, "me");
+        profile.put(Profile.TYPE, "profile");
+        if(item != null)
+            id = (String)item.get("_id");
+        else
+            id = null;
+        db.addDocument(id, profile);
 
-        db.addDocument(id, newProfile);
-        db.printQueryToLog(db.getProfilesbyownerView());
-        return newProfile;
+        return item;
     }
 
 

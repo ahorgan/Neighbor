@@ -172,14 +172,15 @@ public class Database {
     };
 
     public final static Database getInstance(Context context) {
-        if(thisDatabase == null) {
+        if(thisDatabase == null && context != null) {
             thisDatabase = new Database(context);
         }
         return thisDatabase;
     }
 
     private Database(Context context) {
-        mContext = context;
+        if(context != null)
+            mContext = context;
         try {
             manager = getManagerInstance();
         }
@@ -209,16 +210,6 @@ public class Database {
         if (profilesbycontextView.getMap() == null)
             profilesbycontextView.setMap(profilesbycontextMapper, "1");
 
-        profilesbyownerView = db.getView("profiles_by_owner");
-        if (profilesbyownerView.getMap() == null)
-            profilesbyownerView.setMap(new Mapper() {
-                @Override
-                public void map(Map<String, Object> document, Emitter emitter) {
-                    if(document.containsKey("type") && document.get("type").equals("profile")) {
-                        emitter.emit(document.get(Profile.OWNER), document);
-                    }
-                }
-            }, "1");
 
         profilesfemaleView = db.getView("profiles_female");
         if (profilesfemaleView.getMap() == null)
@@ -227,10 +218,6 @@ public class Database {
         profilesmaleView = db.getView("profiles_male");
         if (profilesmaleView.getMap() == null)
             profilesmaleView.setMap(profilesmaleMapper, "1");
-
-        eventsbydateView = db.getView("events_by_date");
-        if (eventsbydateView.getMap() == null)
-            eventsbydateView.setMap(eventsbydateMapper, "1");
 
         eventsbylocationView = db.getView("events_by_location");
         if (eventsbylocationView.getMap() == null)
@@ -265,21 +252,39 @@ public class Database {
 
     public void deleteDocument(String id) {
         try {
-            db.deleteLocalDocument(id);
+            db.getDocument(id).delete();
+            if(db.getDocument(id).isDeleted())
+                Log.d(TAG, "Successfully deleted item");
+            else
+                Log.d(TAG, "Did not successfully delete item");
         }
         catch(CouchbaseLiteException e) {
             Log.d(TAG, e.getLocalizedMessage());
         }
     }
 
+    public Document getDocument(String id) {
+        return db.getDocument(id);
+    }
+
     public void addDocument(String id, Map<String, Object> properties) {
+        Log.d(TAG, "add document");
         try {
             Document doc;
-            if(id == null)
+            HashMap data;
+            if(id == null) {
                 doc = db.createDocument();
-            else
+                data = new HashMap(properties);
+            }
+            else {
                 doc = db.getDocument(id);
-            doc.putProperties(properties);
+                data = new HashMap(doc.getProperties());
+                data.putAll(properties);
+            }
+            doc.putProperties(data);
+            for(Map.Entry entry : doc.getProperties().entrySet()) {
+                Log.d(TAG, entry.getKey() + " " + entry.getValue());
+            }
         }
         catch(CouchbaseLiteException e) {
             Log.d(TAG, e.getLocalizedMessage());
@@ -315,7 +320,18 @@ public class Database {
     }
 
     public View getEventsbydateView() {
-        return eventsbydateView;
+        View view = db.getView("events_by_date");
+        if(view.getMap() == null) {
+            view.setMap(new Mapper() {
+                @Override
+                public void map(Map<String, Object> document, Emitter emitter) {
+                    if(document.containsKey("type") && document.get("type").equals("event")) {
+                        emitter.emit(document.get(Event.DATETIME), document);
+                    }
+                }
+            }, "1");
+        }
+        return db.getView("events_by_date");
     }
 
     public View getEventsbylocationView() {
@@ -343,6 +359,17 @@ public class Database {
     }
 
     public View getProfilesbyownerView() {
+        View view = db.getView("profiles_by_owner");
+        if(view.getMap() == null) {
+            view.setMap(new Mapper() {
+                @Override
+                public void map(Map<String, Object> document, Emitter emitter) {
+                    if (document.containsKey("type") && document.get("type").equals("profile")) {
+                        emitter.emit(document.get(Profile.OWNER), document);
+                    }
+                }
+            }, "1");
+        }
         return db.getView("profiles_by_owner");
     }
 
@@ -363,8 +390,6 @@ public class Database {
         Log.d(TAG, "Print Query To Log:");
         Query query = view.createQuery();
         ArrayList<Object> keys = new ArrayList<>();
-        keys.add("me");
-        query.setKeys(keys);
         query.setLimit(20);
         try {
             QueryEnumerator results = query.run();

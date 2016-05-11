@@ -16,7 +16,10 @@
             android:title="Neighbors" />
         <item
             android:id="@+id/events"
-            android:title="Events" />
+            android:title="Community Events" />
+        <item
+            android:id="@+id/my_events"
+            android:title="My Events" />
     </group>
 
     <item android:title="Communicate">

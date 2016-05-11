@@ -10,6 +10,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent.DummyItem;
@@ -68,7 +72,7 @@ public class EventFragment extends Fragment {
             } else {
                 recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
             }
-            recyclerView.setAdapter(new MyEventRecyclerViewAdapter(DummyContent.ITEMS, mListener));
+            recyclerView.setAdapter(new MyEventRecyclerViewAdapter(new ArrayList<Map<String, Object>>(), mListener));
         }
         return view;
     }
@@ -80,8 +84,22 @@ public class EventFragment extends Fragment {
         if (context instanceof OnListFragmentInteractionListener) {
             mListener = (OnListFragmentInteractionListener) context;
         } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnListFragmentInteractionListener");
+            mListener = new OnListFragmentInteractionListener() {
+                @Override
+                public void onListFragmentInteraction(Map item, int action) {
+                    if(action == MyEventRecyclerViewAdapter.ACTION_REMOVE) {
+                        ((MainActivity)getActivity()).removeEventOnLongClick(item);
+                    }
+                    else if(action == MyEventRecyclerViewAdapter.ACTION_TOGGLE) {
+                        ((MainActivity)getActivity()).onEventSelected(item);
+                    }
+                    else if(action == MyEventRecyclerViewAdapter.ACTION_PROFILE) {
+                        Map item_info = new HashMap();
+                        item_info.put("_id", item.get("_id").toString());
+                        ((MainActivity)getActivity()).onProfileSelected(item_info);
+                    }
+                }
+            };
         }
     }
 
@@ -103,6 +121,6 @@ public class EventFragment extends Fragment {
      */
     public interface OnListFragmentInteractionListener {
         // TODO: Update argument type and name
-        void onListFragmentInteraction(DummyItem item);
+        void onListFragmentInteraction(Map<String, Object> item, int action);
     }
 }

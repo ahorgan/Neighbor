@@ -60,40 +60,26 @@ public class ViewProfileFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            this.item = (HashMap) getArguments().getSerializable("ITEM_MAP");
-        }
+
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_view_profile, container, false);
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
+        if (getArguments() != null) {
+            this.item = (HashMap) getArguments().getSerializable("ITEM_MAP");
+            for(Map.Entry entry : this.item.entrySet()) {
+                Log.d(TAG, entry.getKey() + " " + entry.getValue());
+            }
         }
-    }
-
-    @Override
-    public void setArguments(Bundle args) {
-        super.setArguments(args);
-        item = (HashMap)args.getSerializable(ITEM_MAP);
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        nameView = (TextView) getActivity().findViewById(R.id.ProfileNameText);
-        contextView = (TextView) getActivity().findViewById(R.id.ProfileContextText);
-        educationView = (TextView) getActivity().findViewById(R.id.ProfileEducationText);
-        occupationView = (TextView) getActivity().findViewById(R.id.ProfileOccupationText);
-        ageView = (TextView) getActivity().findViewById(R.id.ProfileAgeText);
-        messageView = (TextView) getActivity().findViewById(R.id.ProfileMessageText);
+        View view = inflater.inflate(R.layout.fragment_view_profile, container, false);
+        nameView = (TextView) view.findViewById(R.id.ProfileNameText);
+        contextView = (TextView) view.findViewById(R.id.ProfileContextText);
+        educationView = (TextView) view.findViewById(R.id.ProfileEducationText);
+        occupationView = (TextView) view.findViewById(R.id.ProfileOccupationText);
+        ageView = (TextView) view.findViewById(R.id.ProfileAgeText);
+        messageView = (TextView) view.findViewById(R.id.ProfileMessageText);
         if(this.item != null) {
             Log.d(TAG, "item is not null");
 
@@ -133,6 +119,29 @@ public class ViewProfileFragment extends Fragment {
         else {
             Log.d(TAG, "Item is null");
         }
+        return view;
+    }
+
+    // TODO: Rename method, update argument and hook method into UI event
+    public void onButtonPressed(Uri uri) {
+        if (mListener != null) {
+            mListener.onFragmentInteraction(uri);
+        }
+    }
+
+    @Override
+    public void setArguments(Bundle args) {
+        super.setArguments(args);
+        item = (HashMap)args.getSerializable(ITEM_MAP);
+        for(Map.Entry entry : item.entrySet()) {
+            Log.d(TAG, entry.getKey() + " " + entry.getValue());
+        }
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+
         if (context instanceof OnFragmentInteractionListener) {
             mListener = (OnFragmentInteractionListener) context;
         } else {

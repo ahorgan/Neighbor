@@ -28,6 +28,7 @@ public class Event {
     public static String HEARDFROMPROFILES = "heard_from_profiles";
     public static String TAGS = "tags";
     public static String TYPE = "type";
+    public static String BCAST = "broadcast";
     private static String TAG = "Event.java";
     private String name;
     private Location location;
