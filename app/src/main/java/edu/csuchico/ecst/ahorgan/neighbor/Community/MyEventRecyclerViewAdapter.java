@@ -18,7 +18,6 @@ import edu.csuchico.ecst.ahorgan.neighbor.Community.EventFragment.OnListFragment
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Database;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Event;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Profile;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent.DummyItem;
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 
 import java.text.ParseException;
@@ -31,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RecyclerView.Adapter} that can display a {@link DummyItem} and makes a call to the
+ * {@link RecyclerView.Adapter} that can display a dummyItem and makes a call to the
  * specified {@link OnListFragmentInteractionListener}.
  * TODO: Replace the implementation with code for your data type.
  */

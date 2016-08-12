@@ -32,8 +32,6 @@ import java.util.concurrent.RunnableFuture;
 
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Database;
 import edu.csuchico.ecst.ahorgan.neighbor.R;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent.DummyItem;
 
 /**
  * A fragment representing a list of Items.

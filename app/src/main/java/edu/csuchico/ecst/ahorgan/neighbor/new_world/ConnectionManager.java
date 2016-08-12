@@ -14,8 +14,6 @@ import android.util.Log;
 import java.io.IOException;
 import java.net.ServerSocket;
 
-import edu.csuchico.ecst.ahorgan.neighbor.p2pWorld.World;
-
 public class ConnectionManager extends Service {
     private final static String TAG = "ConnectionManager";
     public final static int SIG = 0;

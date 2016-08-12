@@ -19,7 +19,6 @@ import org.w3c.dom.Text;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.ProfileFragment.OnListFragmentInteractionListener;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Database;
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Profile;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DbItemContent;
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 
 import java.text.DateFormat;
@@ -34,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RecyclerView.Adapter} that can display a {@link Item} and makes a call to the
+ * {@link RecyclerView.Adapter} that can display a item and makes a call to the
  * specified {@link OnListFragmentInteractionListener}.
  * TODO: Replace the implementation with code for your data type.
  */

@@ -9,7 +9,6 @@ import android.os.IBinder;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.util.Log;
 
-import edu.csuchico.ecst.ahorgan.neighbor.world.WorldService;
 
 /**
  * Created by annika on 4/7/16.

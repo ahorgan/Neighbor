@@ -15,8 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import edu.csuchico.ecst.ahorgan.neighbor.R;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent;
-import edu.csuchico.ecst.ahorgan.neighbor.Community.items.DummyContent.DummyItem;
 
 /**
  * A fragment representing a list of Items.
