@@ -1,5 +1,6 @@
 package edu.csuchico.ecst.ahorgan.neighbor.Community;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.provider.ContactsContract;
@@ -22,11 +23,12 @@ import java.util.Map;
 import java.util.Objects;
 
 import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Database;
+import edu.csuchico.ecst.ahorgan.neighbor.Memeosphere.MemeosphereService;
 import edu.csuchico.ecst.ahorgan.neighbor.R;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
-    private static String TAG = "MainActivity";
+    private static String TAG = "Neighbor";
     private FragmentManager fragmentManager = getSupportFragmentManager();
     private CreateProfileOnClick createProfileOnClick = new CreateProfileOnClick();
     private CreateEventOnClick createEventOnClick = new CreateEventOnClick();
@@ -211,9 +213,11 @@ public class MainActivity extends AppCompatActivity
                     viewEventsFragment).addToBackStack(null).commit();
         } else if (id == R.id.connect) {
             Log.d(TAG, "connect selected");
+            startService(new Intent(this, MemeosphereService.class));
             fab.setOnClickListener(connectOnClick);
         } else if (id == R.id.disconnect) {
             Log.d(TAG, "disconnect selected");
+            stopService(new Intent(this, MemeosphereService.class));
             fab.setOnClickListener(disconnectOnClick);
         }
 

@@ -24,7 +24,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <receiver
-            android:name=".new_world.WifiP2pBcastReceiver"
+            android:name=".Memeosphere.WifiP2pBcastReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -34,6 +34,7 @@
                 <action android:name="android.net.wifi.p2p.THIS_DEVICE_CHANGED" />
             </intent-filter>
         </receiver>
+
         <service
             android:name=".new_world.NewWorldService"
             android:enabled="true"
@@ -60,10 +61,6 @@
 
         <service
             android:name=".Memeosphere.MemeosphereService"
-            android:enabled="true"
-            android:exported="true" />
-        <service
-            android:name=".Memeosphere.ListenerService"
             android:enabled="true"
             android:exported="true"></service>
     </application>

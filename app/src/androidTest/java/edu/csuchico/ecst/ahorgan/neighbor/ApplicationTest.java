@@ -4,8 +4,6 @@ import android.app.Application;
 import android.content.Intent;
 import android.test.ApplicationTestCase;
 
-import org.junit.Test;
-
 import edu.csuchico.ecst.ahorgan.neighbor.Memeosphere.MemeosphereService;
 
 /**
