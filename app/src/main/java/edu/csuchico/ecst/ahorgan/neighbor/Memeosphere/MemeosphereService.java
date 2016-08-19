@@ -55,13 +55,18 @@ public class MemeosphereService extends Service {
         discoverLoop = discoverExecutor.scheduleAtFixedRate(discoverRunnable,
                 10, 10, TimeUnit.SECONDS);
         setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
-                0, 30, TimeUnit.SECONDS);
+                0, 10, TimeUnit.SECONDS);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Started");
-        sd.discoverServices();
+        String action = intent.getAction();
+        if(action != null && action.equals(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)) {
+            setUpLoop.cancel(true);
+            setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
+                    0, 10, TimeUnit.SECONDS);
+        }
         return START_STICKY;
     }
 
@@ -87,8 +92,9 @@ public class MemeosphereService extends Service {
         @Override
         protected Object doInBackground(Object[] objects) {
             sd.clearServiceRequests();
+            int i = 3;
             sd.clearLocalServices();
-            for(int i = 0; i <= 3; i++) {
+            //for(int i = 0; i <= 3; i++) {
                 Map<String, String> record = new HashMap<>();
                 String description = "";
                 record.put("date", "YYYY/MM/DD HH:MM");
@@ -111,7 +117,7 @@ public class MemeosphereService extends Service {
                         "location", record.get("location"));
                 sd.registerService("meme" + record.hashCode() + "_details",
                         "details", record.get("details"));
-            }
+            //}
             sd.addServiceRequest();
             return null;
         }
