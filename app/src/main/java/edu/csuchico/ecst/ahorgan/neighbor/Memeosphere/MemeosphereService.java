@@ -53,7 +53,7 @@ public class MemeosphereService extends Service {
         sd = ServiceDiscovery.getInstance(getApplicationContext());
         setupTest();
         discoverLoop = discoverExecutor.scheduleAtFixedRate(discoverRunnable,
-                10, 10, TimeUnit.SECONDS);
+                10, 30, TimeUnit.SECONDS);
         setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
                 0, 10, TimeUnit.SECONDS);
     }
@@ -92,9 +92,9 @@ public class MemeosphereService extends Service {
         @Override
         protected Object doInBackground(Object[] objects) {
             sd.clearServiceRequests();
-            int i = 3;
+            //int i = 3;
             sd.clearLocalServices();
-            //for(int i = 0; i <= 3; i++) {
+            for(int i = 0; i <= 2; i++) {
                 Map<String, String> record = new HashMap<>();
                 String description = "";
                 record.put("date", "YYYY/MM/DD HH:MM");
@@ -109,15 +109,8 @@ public class MemeosphereService extends Service {
                 description.trim();
                 record.put("details", description);
                 //sd.addServiceRequest("_test" + i);
-                sd.registerService("meme" + record.hashCode() + "_date",
-                        "date", record.get("date"));
-                sd.registerService("meme" + record.hashCode() + "_title",
-                        "title", record.get("title"));
-                sd.registerService("meme" + record.hashCode() + "_location",
-                        "location", record.get("location"));
-                sd.registerService("meme" + record.hashCode() + "_details",
-                        "details", record.get("details"));
-            //}
+                sd.registerService(record);
+            }
             sd.addServiceRequest();
             return null;
         }
@@ -133,8 +126,8 @@ public class MemeosphereService extends Service {
         new SetUpTask().execute();
     }
 
-    public void addMemeBroadcast(String name, Map<String, String> record) {
-        sd.registerService(name, record);
+    public void addMemeBroadcast(Map<String, String> record) {
+        sd.registerService(record);
     }
 
     public void removeMemeBroadcast(String name) {
@@ -162,6 +155,7 @@ public class MemeosphereService extends Service {
             discoverLoop.cancel(true);
         if(setUpLoop != null && !setUpLoop.isCancelled())
             setUpLoop.cancel(true);
+        sd.stopDiscovering();
         removeAllMemeBroadcasts();
         removeAllMemeRequests();
     }

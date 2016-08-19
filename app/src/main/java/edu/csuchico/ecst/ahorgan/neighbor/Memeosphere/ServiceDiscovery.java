@@ -43,6 +43,7 @@ public class ServiceDiscovery {
     private ArrayList<String> expectingServices;
     private String serviceType = "_presence._tcp";
     private String macAddress;
+    private MemeosphereService memeosphere;
     private boolean isDiscovering = false;
     private final ResponseListener responseListener = new ResponseListener();
     private final RecordListener recordListener = new RecordListener();
@@ -104,6 +105,10 @@ public class ServiceDiscovery {
         //setMacAddress();
     }
 
+    public void linkToService(MemeosphereService service) {
+        memeosphere = service;
+    }
+
     public void setMacAddress() {
         WifiManager wifiManager = (WifiManager) mContext.getSystemService(mContext.WIFI_SERVICE);
         macAddress = wifiManager.getConnectionInfo().getMacAddress();
@@ -134,6 +139,20 @@ public class ServiceDiscovery {
             @Override
             public void onFailure(int i) {
                 Log.d(TAG, "Discover Peers Failed");
+            }
+        });
+    }
+
+    public void stopDiscoverPeers() {
+        mManager.stopPeerDiscovery(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "Successfully stopped peer discovery");
+            }
+
+            @Override
+            public void onFailure(int i) {
+                Log.d(TAG, "Failed to stop peer discovery");
             }
         });
     }
@@ -221,52 +240,13 @@ public class ServiceDiscovery {
         });
     }
 
-    public void registerServicesBlock(Map<String, Map<String, String>> entries) {
-        if(entries == null || entries.isEmpty())
+    public void registerService(Map<String, String> record) {
+        if(record == null || record.isEmpty())
             return;
-        final Map<String, Map<String, String>> mEntries = entries;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for(Map.Entry<String, Map<String, String>> entry : mEntries.entrySet()) {
-                    registerService(entry.getKey(), entry.getValue());
-                }
-            }
-        }).start();
-    }
-
-    public void registerService(String service, Map<String, String> record) {
-        if(service == null || service == "" || record == null || record.isEmpty())
-            return;
-        final Map convertedRecord = new HashMap();
-            for(String key : record.keySet()) {
-                addRecord(convertedRecord, key, record.get(key));
-            }
-            try {
-                final String serviceName = service;
-                final WifiP2pServiceInfo serviceInfo =
-                        WifiP2pDnsSdServiceInfo.newInstance(serviceName,
-                                serviceType, convertedRecord);
-                // Add the local service, sending the service info, network channel,
-                // and listener that will be used to indicate success or failure of
-                // the request.
-                mManager.addLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "Added Local Service " + serviceName + " Success");
-                        registeredServices.put(serviceName, serviceInfo);
-                        records.put(serviceName, convertedRecord);
-                    }
-
-                    @Override
-                    public void onFailure(int arg0) {
-                        Log.d(TAG, "Added Local Service " + serviceName + " Failed");
-                    }
-                });
-            }
-            catch(IllegalArgumentException e) {
-                Log.d(TAG, e.getMessage());
-            }
+        for(Map.Entry<String, String> entry : record.entrySet()) {
+            registerService("meme" + record.hashCode(), entry.getKey(),
+                    entry.getValue());
+        }
     }
 
     public void registerService(String service, String key, String value) {
@@ -279,7 +259,7 @@ public class ServiceDiscovery {
         try {
             final String serviceName = service;
             final WifiP2pServiceInfo serviceInfo =
-                    WifiP2pDnsSdServiceInfo.newInstance(serviceName,
+                    WifiP2pDnsSdServiceInfo.newInstance(serviceName + "_" + key,
                             serviceType, convertedRecord);
             // Add the local service, sending the service info, network channel,
             // and listener that will be used to indicate success or failure of

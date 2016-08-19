@@ -1,17 +1,21 @@
 <resources>
     <string name="app_name">Neighbor</string>
+    <string name="app_description">A way to keep updated with local community events and services without the internet</string>
     <string name="title_post_detail">post Detail</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="appwidget_text">EXAMPLE</string>
-    <string name="add_widget">Add widget</string>
+    <string name="title_activity_main">Memeosphere</string>
+    <string name="title_activity_create_profile">Create Profile</string>
+    <string name="title_activity_create_event">Create Event</string>
+    <string name="title_activity_neighbors">Neighbors</string>
+    <string name="title_activity_events">Events</string>
+    <string name="title_activity_broadcasting_events">Events Broadcasting to Community</string>
     <string name="edit_profile">Edit Profile</string>
     <string name="neighbors">Neighbors</string>
     <string name="events">Events</string>
     <string name="connect">Connect with Community</string>
     <string name="disconnect">Disconnect from Community</string>
+    <string name="connected">Connected with Community</string>
+    <string name="disconnected">Disconnected with Community</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

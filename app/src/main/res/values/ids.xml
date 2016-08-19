@@ -3,4 +3,5 @@
     <item name="fragment_side_menu" type="id">fragment_side_menu</item>
     <item name="fragment_create_profile" type="id"/>
     <item name="fragment_view_profile" type="id"/>
+    <item name="connection_status" type="id"/>
 </resources>

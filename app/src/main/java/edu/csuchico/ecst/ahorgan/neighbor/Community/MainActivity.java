@@ -17,6 +17,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -214,10 +215,14 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.connect) {
             Log.d(TAG, "connect selected");
             startService(new Intent(this, MemeosphereService.class));
+            TextView connectionStatus = (TextView)findViewById(R.id.connection_status);
+            connectionStatus.setText(R.string.connected);
             fab.setOnClickListener(connectOnClick);
         } else if (id == R.id.disconnect) {
             Log.d(TAG, "disconnect selected");
             stopService(new Intent(this, MemeosphereService.class));
+            TextView connectionStatus = (TextView)findViewById(R.id.connection_status);
+            connectionStatus.setText(R.string.disconnected);
             fab.setOnClickListener(disconnectOnClick);
         }
 

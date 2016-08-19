@@ -35,19 +35,6 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".new_world.NewWorldService"
-            android:enabled="true"
-            android:exported="true" />
-        <service
-            android:name=".new_world.PeerManagerService"
-            android:enabled="true"
-            android:exported="true" />
-        <service
-            android:name=".new_world.ConnectionManager"
-            android:enabled="true"
-            android:exported="true" />
-
         <activity
             android:name=".Community.MainActivity"
             android:label="@string/title_activity_main"
