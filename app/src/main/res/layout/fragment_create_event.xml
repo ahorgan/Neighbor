@@ -43,23 +43,23 @@
             android:layout_height="wrap_content"
             android:inputType="date"
             android:ems="10"
-            android:id="@+id/eventDateText"
+            android:id="@+id/eventStartDateText"
             android:layout_below="@+id/eventLocationText"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
-            android:layout_toStartOf="@+id/eventTimeText"
-            android:hint="Date" />
+            android:layout_toStartOf="@+id/eventStartTimeText"
+            android:hint="Start Date" />
 
         <EditText
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:inputType="time"
             android:ems="10"
-            android:id="@+id/eventTimeText"
+            android:id="@+id/eventStartTimeText"
             android:layout_below="@+id/eventLocationText"
             android:layout_alignParentRight="true"
             android:layout_alignParentEnd="true"
-            android:hint="Time" />
+            android:hint="Start Time" />
 
         <EditText
             android:layout_width="wrap_content"
@@ -67,12 +67,36 @@
             android:inputType="textMultiLine"
             android:ems="10"
             android:id="@+id/eventDetailsText"
-            android:layout_below="@+id/eventDateText"
+            android:hint="Details"
+            android:layout_below="@+id/eventEndDateText"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentEnd="true"
-            android:hint="Details" />
+            android:layout_alignRight="@+id/eventEndTimeText"
+            android:layout_alignEnd="@+id/eventEndTimeText" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="date"
+            android:ems="10"
+            android:id="@+id/eventEndDateText"
+            android:layout_below="@+id/eventStartDateText"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_toLeftOf="@+id/eventStartTimeText"
+            android:layout_toStartOf="@+id/eventStartTimeText"
+            android:hint="End Date" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="time"
+            android:ems="10"
+            android:id="@+id/eventEndTimeText"
+            android:layout_below="@+id/eventStartTimeText"
+            android:layout_toRightOf="@+id/eventStartDateText"
+            android:layout_toEndOf="@+id/eventStartDateText"
+            android:hint="End Time" />
 
     </RelativeLayout>
 </FrameLayout>

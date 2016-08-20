@@ -255,6 +255,8 @@ public class ServiceDiscovery {
                 value == null || value == "")
             return;
         final Map convertedRecord = new HashMap();
+        final String mKey = key;
+        final String mValue = value;
         addRecord(convertedRecord, key, value);
         try {
             final String serviceName = service;
@@ -267,9 +269,9 @@ public class ServiceDiscovery {
             mManager.addLocalService(mChannel, serviceInfo, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    Log.d(TAG, "Added Local Service " + serviceName + " Success");
+                    Log.d(TAG, "Added Local Service " + serviceName + "_" + mKey +" Success");
                     registeredServices.put(serviceName, serviceInfo);
-                    records.put(serviceName, convertedRecord);
+                    records.put(serviceName + "_" + mKey, convertedRecord);
                 }
 
                 @Override

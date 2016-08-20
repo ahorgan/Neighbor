@@ -4,10 +4,14 @@
     <string name="title_post_detail">post Detail</string>
 
     <string name="title_activity_main">Memeosphere</string>
-    <string name="title_activity_create_profile">Create Profile</string>
-    <string name="title_activity_create_event">Create Event</string>
+    <string name="title_activity_create_profile">Create Profile for Community to See</string>
+    <string name="title_activity_edit_profile">Edit Profile</string>
+    <string name="title_activity_my_profiles">My Profiles</string>
+    <string name="title_activity_create_event">Create Event to Broadcast to Community</string>
     <string name="title_activity_neighbors">Neighbors</string>
-    <string name="title_activity_events">Events</string>
+    <string name="title_activity_neighbor">Neighbor</string>
+    <string name="title_activity_events">Community Events</string>
+    <string name="title_activity_event">Event</string>
     <string name="title_activity_broadcasting_events">Events Broadcasting to Community</string>
     <string name="edit_profile">Edit Profile</string>
     <string name="neighbors">Neighbors</string>

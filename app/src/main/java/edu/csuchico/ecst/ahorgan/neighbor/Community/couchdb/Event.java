@@ -20,15 +20,16 @@ import java.util.Stack;
  * Created by annika on 5/1/16.
  */
 public class Event {
-    public static String NAME = "name";
+    public static String TITLE = "title";
     public static String LOCATION = "location";
-    public static String DATETIME = "date_time";
+    public static String STARTDATETIME = "start_date";
+    public static String ENDDATETIME = "end_date";
     public static String DETAILS = "details";
-    public static String OWNERPROFILE = "owner_profile";
+    public static String OWNER = "owner";
     public static String HEARDFROMPROFILES = "heard_from_profiles";
     public static String TAGS = "tags";
     public static String TYPE = "type";
-    public static String BCAST = "broadcast";
+    public static String BCAST = "bcast";
     private static String TAG = "Event.java";
     private String name;
     private Location location;
@@ -77,20 +78,23 @@ public class Event {
     }
 
     public Event updateAttributes(Map<String, Object> attributes) {
-        if(attributes.containsKey(NAME)) {
-            this.name = (String)attributes.get(NAME);
+        if(attributes.containsKey(TITLE)) {
+            this.name = (String)attributes.get(TITLE);
         }
         if(attributes.containsKey(LOCATION)) {
             this.location = (Location) attributes.get(LOCATION);
         }
-        if(attributes.containsKey(DATETIME)) {
-            this.dateTime = (Date) attributes.get(DATETIME);
+        if(attributes.containsKey(STARTDATETIME)) {
+            this.dateTime = (Date) attributes.get(STARTDATETIME);
+        }
+        if(attributes.containsKey(ENDDATETIME)) {
+            this.dateTime = (Date) attributes.get(ENDDATETIME);
         }
         if(attributes.containsKey(DETAILS)) {
             this.details = (String)attributes.get(DETAILS);
         }
-        if(attributes.containsKey(OWNERPROFILE)) {
-            this.owner = (Profile) attributes.get(OWNERPROFILE);
+        if(attributes.containsKey(OWNER)) {
+            this.owner = (Profile) attributes.get(OWNER);
         }
         if(attributes.containsKey(HEARDFROMPROFILES)) {
             this.heard_from_profiles.addAll((ArrayList<Profile>)attributes.get(HEARDFROMPROFILES));

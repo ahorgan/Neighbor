@@ -17,7 +17,11 @@ import com.couchbase.lite.View;
 import com.couchbase.lite.android.AndroidContext;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -49,20 +53,11 @@ public class Database {
     View tagsView;
     static Database thisDatabase;
 
-    Mapper eventsbydateMapper = new Mapper() {
-        @Override
-        public void map(Map<String, Object> document, Emitter emitter) {
-            if(document.containsKey("type") && document.get("type").equals("event")) {
-                emitter.emit(document.get(Event.DATETIME), document);
-            }
-        }
-    };
-
     Mapper eventsbyownerMapper = new Mapper() {
         @Override
         public void map(Map<String, Object> document, Emitter emitter) {
             if(document.containsKey("type") && document.get("type").equals("event")) {
-                emitter.emit(document.get(Event.OWNERPROFILE), document);
+                emitter.emit(document.get(Event.OWNER), document);
             }
         }
     };
@@ -252,8 +247,8 @@ public class Database {
 
     public void deleteDocument(String id) {
         try {
-            db.getDocument(id).delete();
-            if(db.getDocument(id).isDeleted())
+            Document doc = db.getDocument(id);
+            if(doc.delete())
                 Log.d(TAG, "Successfully deleted item");
             else
                 Log.d(TAG, "Did not successfully delete item");
@@ -291,47 +286,75 @@ public class Database {
         }
     }
 
-    public String addEvent(String id, Map<String, Object> properties) {
-        if(id != null) {
-            return new Event(mContext, id).updateAttributes(properties).getId();
-        }
-        else {
-            return new Event(mContext).updateAttributes(properties).getId();
-        }
-    }
-
-    public Neighbor addNeighbor(String id, Map<String, Object> properties) {
-        if(id != null) {
-            return new Neighbor(mContext, id).updateAttributes(properties);
-        }
-        return null;
-    }
-
-    public String addProfile(String id, Map<String, Object> properties) {
-
-        if(id != null) {
-            Profile profile = new Profile(mContext, id, properties);
-            return profile.getId();
-        }
-        else {
-            Profile profile = new Profile(mContext, properties);
-            return profile.getId();
-        }
-    }
-
     public View getEventsbydateView() {
         View view = db.getView("events_by_date");
         if(view.getMap() == null) {
             view.setMap(new Mapper() {
                 @Override
                 public void map(Map<String, Object> document, Emitter emitter) {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+                    Date startDate = null;
+                    Date endDate = null;
+                    Date today = null;
+                    try {
+                        startDate = dateFormat.parse(document.get(Event.STARTDATETIME)
+                                .toString());
+                        endDate = dateFormat.parse(document.get(Event.ENDDATETIME).toString());
+                        today = Calendar.getInstance().getTime();
+                    }
+                    catch(ParseException e) {
+                        Log.d(TAG, e.getMessage());
+                    }
                     if(document.containsKey("type") && document.get("type").equals("event")) {
-                        emitter.emit(document.get(Event.DATETIME), document);
+                        if(startDate != null && endDate != null) {
+                            if(endDate.after(today))
+                                emitter.emit(Math.abs(today.getTime() - startDate.getTime()),
+                                        document);
+                        }
+                        else {
+                            emitter.emit(document.get(Event.STARTDATETIME), document);
+                        }
                     }
                 }
             }, "1");
         }
         return db.getView("events_by_date");
+    }
+
+    public View getBroadcastEventsView() {
+        View view = db.getView("events_broadcast");
+        if(view.getMap() == null) {
+            view.setMap(new Mapper() {
+                @Override
+                public void map(Map<String, Object> document, Emitter emitter) {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+                    Date startDate = null;
+                    Date endDate = null;
+                    Date today = null;
+                    try {
+                        startDate = dateFormat.parse(document.get(Event.STARTDATETIME)
+                                .toString());
+                        endDate = dateFormat.parse(document.get(Event.ENDDATETIME).toString());
+                        today = Calendar.getInstance().getTime();
+                    }
+                    catch(ParseException e) {
+                        Log.d(TAG, e.getMessage());
+                    }
+                    if(document.containsKey("type") && document.get("type").equals("event")
+                            && document.get(Event.BCAST).equals(true)) {
+                        if(startDate != null && endDate != null) {
+                            if(endDate.after(today) || endDate.equals(today))
+                                emitter.emit(Math.abs(today.getTime() - startDate.getTime()),
+                                        document);
+                        }
+                        else {
+                            emitter.emit(document.get(Event.STARTDATETIME), document);
+                        }
+                    }
+                }
+            }, "1");
+        }
+        return db.getView("events_broadcast");
     }
 
     public View getEventsbylocationView() {

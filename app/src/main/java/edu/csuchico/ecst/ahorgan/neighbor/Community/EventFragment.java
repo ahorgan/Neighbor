@@ -23,10 +23,10 @@ import edu.csuchico.ecst.ahorgan.neighbor.R;
  * interface.
  */
 public class EventFragment extends Fragment {
-
-    // TODO: Customize parameter argument names
+    public final static String EVENT_TYPE = "event_type";
+    public final static int ALL_EVENTS = 0;
+    public final static int BROADCASTED_EVENTS = 1;
     private static final String ARG_COLUMN_COUNT = "column-count";
-    // TODO: Customize parameters
     private int mColumnCount = 1;
     private OnListFragmentInteractionListener mListener;
 
@@ -70,7 +70,18 @@ public class EventFragment extends Fragment {
             } else {
                 recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
             }
-            recyclerView.setAdapter(new MyEventRecyclerViewAdapter(new ArrayList<Map<String, Object>>(), mListener));
+            ArrayList<Map<String, Object>> dummyholder = new ArrayList<>();
+            /*
+                Because the recycler uses the database LiveQuery to populate list,
+                arraylist parameter is redundant.
+                Use it to specify which database view to populate recycler
+             */
+            if(savedInstanceState != null && savedInstanceState.get(EVENT_TYPE) != null) {
+                Map<String, Object> dummymap = new HashMap<>();
+                dummymap.put(EVENT_TYPE, savedInstanceState.get(EVENT_TYPE));
+                dummyholder.add(dummymap);
+            }
+            recyclerView.setAdapter(new EventRecyclerViewAdapter(dummyholder, mListener));
         }
         return view;
     }
@@ -85,13 +96,10 @@ public class EventFragment extends Fragment {
             mListener = new OnListFragmentInteractionListener() {
                 @Override
                 public void onListFragmentInteraction(Map item, int action) {
-                    if(action == MyEventRecyclerViewAdapter.ACTION_REMOVE) {
-                        ((MainActivity)getActivity()).removeEventOnLongClick(item);
-                    }
-                    else if(action == MyEventRecyclerViewAdapter.ACTION_TOGGLE) {
+                    if(action == EventRecyclerViewAdapter.ACTION_TOGGLE) {
                         ((MainActivity)getActivity()).onEventSelected(item);
                     }
-                    else if(action == MyEventRecyclerViewAdapter.ACTION_PROFILE) {
+                    else if(action == EventRecyclerViewAdapter.ACTION_PROFILE) {
                         Map item_info = new HashMap();
                         item_info.put("_id", item.get("_id").toString());
                         ((MainActivity)getActivity()).onProfileSelected(item_info);
@@ -107,18 +115,7 @@ public class EventFragment extends Fragment {
         mListener = null;
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
     public interface OnListFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onListFragmentInteraction(Map<String, Object> item, int action);
     }
 }

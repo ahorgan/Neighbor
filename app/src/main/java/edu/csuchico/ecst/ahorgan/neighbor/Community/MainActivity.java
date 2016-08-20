@@ -41,7 +41,9 @@ public class MainActivity extends AppCompatActivity
     private CreateProfileFragment createProfileFragment = new CreateProfileFragment();
     private CreateEventFragment createEventFragment = new CreateEventFragment();
     private ProfileFragment viewProfilesFragment = new ProfileFragment();
+    private ProfileFragment viewNeighborsFragment = new ProfileFragment();
     private EventFragment viewEventsFragment = new EventFragment();
+    private EventFragment viewBroadcastedEventsFragment = new EventFragment();
     private ViewProfileFragment viewProfileFragment = new ViewProfileFragment();
     private FloatingActionButton fab;
     private Toolbar toolbar;
@@ -50,8 +52,11 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
+        //initialize database
+        Database.getInstance(getApplicationContext());
         setContentView(R.layout.activity_main);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
+        toolbar.setTitle(R.string.title_activity_events);
         setSupportActionBar(toolbar);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -74,13 +79,16 @@ public class MainActivity extends AppCompatActivity
             // Intent, pass the Intent's extras to the fragment as arguments
 
             // Add the fragment to the 'fragment_container' FrameLayout
-            createProfileFragment = new CreateProfileFragment();
+            viewEventsFragment = new EventFragment();
+            Bundle bundle = new Bundle();
+            bundle.putInt(EventFragment.EVENT_TYPE, EventFragment.ALL_EVENTS);
+            viewEventsFragment.setArguments(bundle);
             fragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, createProfileFragment)
+                    .replace(R.id.fragment_container, viewEventsFragment)
                     .addToBackStack(null)
                     .commit();
 
-            fab.setOnClickListener(createProfileOnClick);
+            fab.setOnClickListener(viewEventsOnClick);
         }
         else {
             Log.d(TAG, "Cannot find R.id.fragment_create_profile");
@@ -142,6 +150,7 @@ public class MainActivity extends AppCompatActivity
         if(fab == null)
             fab = (FloatingActionButton)findViewById(R.id.fab);
         toolbar.getMenu().findItem(R.id.action_delete_profile).setVisible(true);
+        toolbar.setTitle(R.string.title_activity_neighbor);
         fab.setOnClickListener(viewProfileOnClick);
         Log.d(TAG, "Profile Selected:");
         Database db = Database.getInstance(this);
@@ -162,15 +171,9 @@ public class MainActivity extends AppCompatActivity
         if(fab == null)
             fab = (FloatingActionButton)findViewById(R.id.fab);
         toolbar.getMenu().findItem(R.id.action_delete_event).setVisible(true);
-        Database db = Database.getInstance(this);
+        toolbar.setTitle(R.string.title_activity_event);
+        Database db = Database.getInstance(getApplicationContext());
         db.addDocument(item.get("_id").toString(), item);
-    }
-
-    public void removeEventOnLongClick(Map<String, Objects> item) {
-        String id = item.get("_id").toString();
-        Log.d(TAG, "Removing doc with id " + id);
-        Database db = Database.getInstance(this);
-        db.deleteDocument(id);
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
@@ -185,6 +188,7 @@ public class MainActivity extends AppCompatActivity
         if (id == R.id.edit_profile) {
             Log.d(TAG, "edit profile selected");
             fab.setOnClickListener(createProfileOnClick);
+            toolbar.setTitle(R.string.title_activity_edit_profile);
             createProfileFragment = new CreateProfileFragment();
             fragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, createProfileFragment)
@@ -192,24 +196,34 @@ public class MainActivity extends AppCompatActivity
         }
         else if(id == R.id.view_profiles) {
             Log.d(TAG, "view profiles selected");
-            viewProfilesFragment = new ProfileFragment();
             fab.setOnClickListener(profilesOnClick);
+            toolbar.setTitle(R.string.title_activity_my_profiles);
+            viewProfilesFragment = new ProfileFragment();
             fragmentManager.beginTransaction().replace(R.id.fragment_container,
                     viewProfilesFragment).addToBackStack(null).commit();
         }
         else if (id == R.id.create_event) {
             Log.d(TAG, "create event selected");
-            createEventFragment = new CreateEventFragment();
             fab.setOnClickListener(createEventOnClick);
+            toolbar.setTitle(R.string.title_activity_create_event);
+            createEventFragment = new CreateEventFragment();
             fragmentManager.beginTransaction().replace(R.id.fragment_container,
                     createEventFragment).addToBackStack(null).commit();
         } else if (id == R.id.neighbors) {
             Log.d(TAG, "neighbors selected");
             fab.setOnClickListener(profilesOnClick);
+            viewNeighborsFragment = new ProfileFragment();
+            toolbar.setTitle(R.string.title_activity_neighbors);
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    viewNeighborsFragment).addToBackStack(null).commit();
         } else if (id == R.id.events) {
             Log.d(TAG, "events selected");
-            viewEventsFragment = new EventFragment();
             fab.setOnClickListener(viewEventsOnClick);
+            toolbar.setTitle(R.string.title_activity_events);
+            viewEventsFragment = new EventFragment();
+            Bundle bundle = new Bundle();
+            bundle.putInt(EventFragment.EVENT_TYPE, EventFragment.ALL_EVENTS);
+            viewEventsFragment.setArguments(bundle);
             fragmentManager.beginTransaction().replace(R.id.fragment_container,
                     viewEventsFragment).addToBackStack(null).commit();
         } else if (id == R.id.connect) {
@@ -218,12 +232,24 @@ public class MainActivity extends AppCompatActivity
             TextView connectionStatus = (TextView)findViewById(R.id.connection_status);
             connectionStatus.setText(R.string.connected);
             fab.setOnClickListener(connectOnClick);
+            toolbar.setTitle(R.string.title_activity_broadcasting_events);
+            viewBroadcastedEventsFragment = new EventFragment();
+            Bundle bundle = new Bundle();
+            bundle.putInt(EventFragment.EVENT_TYPE, EventFragment.BROADCASTED_EVENTS);
+            viewBroadcastedEventsFragment.setArguments(bundle);
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    viewBroadcastedEventsFragment).addToBackStack(null).commit();
+
         } else if (id == R.id.disconnect) {
             Log.d(TAG, "disconnect selected");
             stopService(new Intent(this, MemeosphereService.class));
             TextView connectionStatus = (TextView)findViewById(R.id.connection_status);
             connectionStatus.setText(R.string.disconnected);
             fab.setOnClickListener(disconnectOnClick);
+            toolbar.setTitle(R.string.title_activity_broadcasting_events);
+            viewBroadcastedEventsFragment = new EventFragment();
+            fragmentManager.beginTransaction().replace(R.id.fragment_container,
+                    viewBroadcastedEventsFragment).addToBackStack(null).commit();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -250,8 +276,11 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onClick(View v) {
             Log.d(TAG, "create event button clicked");
-            createEventFragment.updateProfile();
+            createEventFragment.updateEvent();
             viewEventsFragment = new EventFragment();
+            Bundle bundle = new Bundle();
+            bundle.putInt(EventFragment.EVENT_TYPE, EventFragment.ALL_EVENTS);
+            viewEventsFragment.setArguments(bundle);
             fragmentManager.beginTransaction().replace(R.id.fragment_container,
                     viewEventsFragment).addToBackStack(null).commit();
             fab.setOnClickListener(viewEventsOnClick);
@@ -292,12 +321,9 @@ public class MainActivity extends AppCompatActivity
             if(fab == null)
                 fab = (FloatingActionButton) findViewById(R.id.fab);
             createEventFragment = new CreateEventFragment();
-            Bundle bundle = new Bundle();
-            bundle.putSerializable("ITEM_MAP", (HashMap)viewProfileFragment.getItem());
-            createProfileFragment.setArguments(bundle);
             fragmentManager.beginTransaction().replace(R.id.fragment_container,
-                    createProfileFragment).addToBackStack(null).commit();
-            fab.setOnClickListener(createProfileOnClick);
+                    createEventFragment).addToBackStack(null).commit();
+            fab.setOnClickListener(createEventOnClick);
         }
     }
 

@@ -56,10 +56,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="DateTime"
-            android:id="@+id/eventDateTimeTv"
-            android:layout_weight="0.05"
-            android:textAlignment="textEnd"
+            android:text="StartDateTime"
+            android:id="@+id/eventStartDateTimeTv"
+            android:gravity="right" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="EndDateTime"
+            android:id="@+id/eventEndDateTimeTv"
             android:gravity="right"
             android:elevation="4dp" />
 
@@ -74,7 +80,7 @@
 
         <TextView
             android:layout_width="match_parent"
-            android:layout_height="237dp"
+            android:layout_height="204dp"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="Details"
             android:id="@+id/eventDetailsTv"

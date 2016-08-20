@@ -10,12 +10,26 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.couchbase.lite.CouchbaseLiteException;
+import com.couchbase.lite.Document;
+import com.couchbase.lite.LiveQuery;
+import com.couchbase.lite.Query;
+import com.couchbase.lite.QueryEnumerator;
+import com.couchbase.lite.QueryRow;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Database;
+import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Event;
 
 public class MemeosphereService extends Service {
     private static String TAG = "MemeosphereService";
@@ -37,6 +51,9 @@ public class MemeosphereService extends Service {
             Executors.newScheduledThreadPool(2);
     private ScheduledFuture discoverLoop;
     private ScheduledFuture setUpLoop;
+    private Database db;
+    private LiveQuery mQuery;
+    private ArrayList<Map<String, String>> localServices;
 
     public class MemeosphereBinder extends Binder {
         MemeosphereService getService() {
@@ -50,10 +67,51 @@ public class MemeosphereService extends Service {
     @Override
     public void onCreate() {
         Log.d(TAG, "Created");
+        localServices = new ArrayList<>();
         sd = ServiceDiscovery.getInstance(getApplicationContext());
-        setupTest();
+        db = Database.getInstance(getApplicationContext());
+        mQuery = db.getBroadcastEventsView().createQuery().toLiveQuery();
+        mQuery.addChangeListener(new LiveQuery.ChangeListener() {
+            @Override
+            public void changed(LiveQuery.ChangeEvent event) {
+                if(setUpLoop != null && !setUpLoop.isCancelled())
+                    setUpLoop.cancel(true);
+                sd.clearLocalServices();
+                localServices.clear();
+                for(QueryRow row : mQuery.getRows()) {
+                    Document doc = row.getDocument();
+                    Map<String, String> properties = new HashMap<>();
+                    for(Map.Entry<String, Object> property : doc.getProperties().entrySet()) {
+                        if(property.getKey() != "_id" && property.getKey() != "_rev") {
+                            properties.put(property.getKey(), property.getValue().toString());
+                        }
+                    }
+                    localServices.add(properties);
+                    sd.registerService(properties);
+                }
+                setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
+                        0, 10, TimeUnit.SECONDS);
+            }
+        });
+        try {
+            QueryEnumerator results = mQuery.run();
+            for (Iterator<QueryRow> it = results; it.hasNext();) {
+                QueryRow row = it.next();
+                Map<String, String> properties = new HashMap<>();
+                for(Map.Entry<String, Object> entry : row.getDocument().getProperties().entrySet()) {
+                    if(entry.getKey() != "_id" && entry.getKey() != "_rev")
+                        properties.put(entry.getKey(), entry.getValue().toString());
+                }
+                localServices.add(properties);
+                sd.registerService(properties);
+            }
+        }
+        catch(CouchbaseLiteException e) {
+            Log.d(TAG, e.getMessage());
+        }
+        mQuery.start();
         discoverLoop = discoverExecutor.scheduleAtFixedRate(discoverRunnable,
-                10, 30, TimeUnit.SECONDS);
+                20, 30, TimeUnit.SECONDS);
         setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
                 0, 10, TimeUnit.SECONDS);
     }
@@ -94,22 +152,8 @@ public class MemeosphereService extends Service {
             sd.clearServiceRequests();
             //int i = 3;
             sd.clearLocalServices();
-            for(int i = 0; i <= 2; i++) {
-                Map<String, String> record = new HashMap<>();
-                String description = "";
-                record.put("date", "YYYY/MM/DD HH:MM");
-                record.put("title", "Party at the secret coffee shop that you can only hope that " +
-                "you're cool enough to know about");
-                record.put("location", "secret coffee shop, it's a secret, USA");
-                for(int j = 0; j < i; j++) {
-                    description += "Just go around back. You can bring friends or friends of " +
-                    "friends. It's an 80's style party. Call 123-456-7890 for questions or " +
-                    "directions ";
-                }
-                description.trim();
-                record.put("details", description);
-                //sd.addServiceRequest("_test" + i);
-                sd.registerService(record);
+            for(Map<String, String> service : localServices) {
+                sd.registerService(service);
             }
             sd.addServiceRequest();
             return null;
