@@ -26,6 +26,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import edu.csuchico.ecst.ahorgan.neighbor.Community.couchdb.Event;
 
 /**
  * Created by annika on 8/12/16.
@@ -41,6 +45,7 @@ public class ServiceDiscovery {
     private Map<String, Map<String, String>> records;
     private Map<String, WifiP2pDnsSdServiceRequest> requestedServices;
     private ArrayList<String> expectingServices;
+    private Map<String, Meme> trackedMemes;
     private String serviceType = "_presence._tcp";
     private String macAddress;
     private MemeosphereService memeosphere;
@@ -56,10 +61,21 @@ public class ServiceDiscovery {
             Log.d(TAG, "Dns Service Available:");
             Log.d(TAG, instanceName + ' ' + registrationType);
             Log.d(TAG, srcDevice.deviceName + ' ' + srcDevice.deviceAddress);
-            if(!expectingServices.contains(instanceName))
-                expectingServices.add(instanceName);
-            if(!requestedServices.containsKey(instanceName))
-                addServiceRequest(instanceName);
+            Matcher matcher = Pattern.compile("meme(-?\\d{10})_([a-z_]+)$").matcher(instanceName);
+            if(matcher.matches()) {
+                String hash = matcher.group(1);
+                String attribute = matcher.group(2);
+                boolean containsHash = trackedMemes.containsKey(hash);
+                if (!containsHash || !trackedMemes.get(hash).containsKey(attribute)) {
+                    if (!containsHash)
+                        trackedMemes.put(hash, new Meme());
+                    trackedMemes.get(hash).addKey(attribute);
+                    if (!expectingServices.contains(instanceName))
+                        expectingServices.add(instanceName);
+                    if (!requestedServices.containsKey(instanceName))
+                        addServiceRequest(instanceName);
+                }
+            }
             discoverServices();
         }
     }
@@ -71,9 +87,38 @@ public class ServiceDiscovery {
                                               WifiP2pDevice srcDevice) {
             Log.d(TAG, "Dns Record Available:");
             Log.d(TAG, fullDomainName);
+            Matcher matcher = Pattern.compile("(meme(-?\\d{10})_([a-z_]+))\\..*")
+                    .matcher(fullDomainName);
             Log.d(TAG, srcDevice.deviceName + ' ' + srcDevice.deviceAddress);
-            for(String key : txtRecordMap.keySet()) {
-                Log.d(TAG, key + " : " + txtRecordMap.get(key));
+            if (matcher.matches()) {
+                String instanceName = matcher.group(1);
+                String hash = matcher.group(2);
+                String attribute = matcher.group(3);
+                if(trackedMemes.get(hash).belongsToThisDevice) {
+                    removeServiceRequest(instanceName);
+                    expectingServices.remove(instanceName);
+                }
+                else if (!trackedMemes.get(hash).containsProperty(attribute)) {
+                    String value = "";
+                    if (txtRecordMap.containsKey(attribute + "c")) {
+                        for (int i = 0; i < Integer.getInteger(txtRecordMap.get(attribute + "c")); i++) {
+                            value += txtRecordMap.get(attribute + i);
+                        }
+                    } else
+                        value = txtRecordMap.get(attribute);
+                    if(attribute.equals(Event.OWNER) && value.equals(macAddress)) {
+                        trackedMemes.get(hash).setBelongsToThisDevice(true);
+                    }
+                    else if (attribute.equals(Event.OWNER) && value.equals("me"))
+                        value = srcDevice.deviceAddress;
+                    else if (attribute.equals((Event.BCAST)))
+                        value = "false";
+                    if (trackedMemes.get(hash).addProperty(attribute, value)) {
+                        memeosphere.addMemeToDatabase(trackedMemes.get(hash));
+                    }
+                    removeServiceRequest(instanceName);
+                    expectingServices.remove(instanceName);
+                }
             }
         }
     }
@@ -102,17 +147,15 @@ public class ServiceDiscovery {
         requestedServices = new HashMap<>();
         expectingServices = new ArrayList<>();
         mManager.setDnsSdResponseListeners(mChannel, responseListener, recordListener);
-        //setMacAddress();
+        trackedMemes = new HashMap<>();
     }
 
     public void linkToService(MemeosphereService service) {
         memeosphere = service;
     }
 
-    public void setMacAddress() {
-        WifiManager wifiManager = (WifiManager) mContext.getSystemService(mContext.WIFI_SERVICE);
-        macAddress = wifiManager.getConnectionInfo().getMacAddress();
-        addServiceRequest(macAddress);
+    public void setMacAddress(String mac) {
+        macAddress = mac;
     }
 
     public void discoverServices() {

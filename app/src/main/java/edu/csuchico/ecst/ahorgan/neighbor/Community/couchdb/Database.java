@@ -188,48 +188,6 @@ public class Database {
         catch(CouchbaseLiteException e) {
             Log.d(TAG, e.getLocalizedMessage());
         }
-
-        profilesbynameView = db.getView("profiles_by_name");
-        if (profilesbynameView.getMap() == null)
-            profilesbynameView.setMap(profilesbynameMapper, "1");
-
-        profilesbyoccupationView = db.getView("profiles_by_occupation");
-        if (profilesbyoccupationView.getMap()  == null)
-            profilesbyoccupationView.setMap(profilesbyoccupationMapper, "1");
-
-        profilesbyeducationView = db.getView("profiles_by_education");
-        if (profilesbyeducationView.getMap() == null)
-            profilesbyeducationView.setMap(profilesbyeducationMapper, "1");
-
-        profilesbycontextView = db.getView("profiles_by_context");
-        if (profilesbycontextView.getMap() == null)
-            profilesbycontextView.setMap(profilesbycontextMapper, "1");
-
-
-        profilesfemaleView = db.getView("profiles_female");
-        if (profilesfemaleView.getMap() == null)
-            profilesfemaleView.setMap(profilesfemaleMapper, "1");
-
-        profilesmaleView = db.getView("profiles_male");
-        if (profilesmaleView.getMap() == null)
-            profilesmaleView.setMap(profilesmaleMapper, "1");
-
-        eventsbylocationView = db.getView("events_by_location");
-        if (eventsbylocationView.getMap() == null)
-            eventsbylocationView.setMap(eventsbylocationMapper, "1");
-
-        eventsbyownerView = db.getView("events_by_owner");
-        if (eventsbyownerView.getMap() == null)
-            eventsbyownerView.setMap(eventsbyownerMapper, "1");
-
-        neighborsView = db.getView("neighbors");
-        if (neighborsView.getMap() == null)
-            neighborsView.setMap(neighborsMapper, "1");
-
-        tagsView = db.getView("tags");
-        if (tagsView.getMap() == null)
-            tagsView.setMap(tagsMapper, "1");
-        
     }
 
     public final static com.couchbase.lite.Database getDatabaseInstance() throws CouchbaseLiteException {
@@ -297,9 +255,11 @@ public class Database {
                     Date endDate = null;
                     Date today = null;
                     try {
-                        startDate = dateFormat.parse(document.get(Event.STARTDATETIME)
+                        if(document.containsKey(Event.STARTDATETIME))
+                            startDate = dateFormat.parse(document.get(Event.STARTDATETIME)
                                 .toString());
-                        endDate = dateFormat.parse(document.get(Event.ENDDATETIME).toString());
+                        if(document.containsKey(Event.ENDDATETIME))
+                            endDate = dateFormat.parse(document.get(Event.ENDDATETIME).toString());
                         today = Calendar.getInstance().getTime();
                     }
                     catch(ParseException e) {
@@ -361,8 +321,18 @@ public class Database {
         return eventsbylocationView;
     }
 
-    public View getEventsbyownerView() {
-        return eventsbyownerView;
+    public View getEventsbyOwnerView() {
+        View view = db.getView("events_by_owner");
+        if(view.getMap() == null) {
+            view.setMap(new Mapper() {
+                @Override
+                public void map(Map<String, Object> document, Emitter emitter) {
+                    if(document.containsKey("type") && document.get("type").equals("event"))
+                        emitter.emit(document.get(Event.OWNER), document);
+                }
+            }, "1");
+        }
+        return db.getView("events_by_owner");
     }
 
     public View getProfilesbycontextView() {

@@ -52,8 +52,10 @@ public class WifiP2pBcastReceiver extends BroadcastReceiver{
         }
         else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
             Log.d(TAG, "Wifi P2P This Device Changed Action");
-            //new_intent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE,
-            // intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
+            Intent memeIntent = new Intent(context, MemeosphereService.class);
+            memeIntent.putExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE,
+            memeIntent.setAction(action));
+            context.startService(memeIntent);
 
         }
     }

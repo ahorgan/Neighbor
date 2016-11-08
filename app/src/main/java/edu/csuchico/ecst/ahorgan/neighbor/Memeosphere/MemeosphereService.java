@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -19,9 +20,11 @@ import com.couchbase.lite.QueryRow;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -69,6 +72,7 @@ public class MemeosphereService extends Service {
         Log.d(TAG, "Created");
         localServices = new ArrayList<>();
         sd = ServiceDiscovery.getInstance(getApplicationContext());
+        sd.linkToService(this);
         db = Database.getInstance(getApplicationContext());
         mQuery = db.getBroadcastEventsView().createQuery().toLiveQuery();
         mQuery.addChangeListener(new LiveQuery.ChangeListener() {
@@ -99,7 +103,8 @@ public class MemeosphereService extends Service {
                 QueryRow row = it.next();
                 Map<String, String> properties = new HashMap<>();
                 for(Map.Entry<String, Object> entry : row.getDocument().getProperties().entrySet()) {
-                    if(entry.getKey() != "_id" && entry.getKey() != "_rev")
+                    if(entry.getKey() != "_id" && entry.getKey() != "_rev"
+                            && entry.getKey() != Event.BCAST)
                         properties.put(entry.getKey(), entry.getValue().toString());
                 }
                 localServices.add(properties);
@@ -119,11 +124,19 @@ public class MemeosphereService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Started");
-        String action = intent.getAction();
+        String action = null;
+        if(intent != null)
+            action = intent.getAction();
         if(action != null && action.equals(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)) {
             setUpLoop.cancel(true);
             setUpLoop = discoverExecutor.scheduleAtFixedRate(setupRunnable,
                     0, 10, TimeUnit.SECONDS);
+        }
+        else if(action != null && action
+                .equals(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)) {
+            WifiP2pDevice thisDevice = intent
+                    .getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
+            sd.setMacAddress(thisDevice.deviceAddress);
         }
         return START_STICKY;
     }
@@ -192,6 +205,29 @@ public class MemeosphereService extends Service {
 
     public void removeAllMemeRequests() {
         sd.clearServiceRequests();
+    }
+
+    public void addMemeToDatabase(Meme meme) {
+        Query mQuery = db.getEventsbyOwnerView().createQuery();
+        Map<String, Object> properties = new HashMap<>();
+        properties.putAll(meme.getProperties());
+        mQuery.setKeys(Arrays.asList(properties.get(Event.OWNER)));
+        String id = null;
+        try {
+            QueryEnumerator rows = mQuery.run();
+            for(Iterator<QueryRow> it = rows; it.hasNext();) {
+                Document document = it.next().getDocument();
+                if(properties.containsKey(Event.TITLE) && document.getProperties().get(Event.TITLE)
+                        .equals(properties.get(Event.TITLE))) {
+                    id = document.getId();
+                }
+            }
+        }
+        catch(CouchbaseLiteException e) {
+            Log.d(TAG, e.getMessage());
+        }
+        properties.put(Event.BCAST, false);
+        db.addDocument(id, properties);
     }
 
     public void tearDown() {

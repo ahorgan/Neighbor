@@ -30,10 +30,9 @@ import edu.csuchico.ecst.ahorgan.neighbor.R;
  * create an instance of this fragment.
  */
 public class CreateEventFragment extends Fragment {
-    private static String TAG = "CreateProfileFragment";
+    private static String TAG = "CreateEventFragment";
     private Context mContext;
     private static Database db;
-    private static Map<String, Object> newProfile;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -154,7 +153,7 @@ public class CreateEventFragment extends Fragment {
     }
 
     public Map<String, Object> updateEvent() {
-        Log.d(TAG, "updateProfile()");
+        Log.d(TAG, "updateEvent()");
         nameText = (EditText) getActivity().findViewById(R.id.eventNameText);
         locationText = (EditText) getActivity().findViewById(R.id.eventLocationText);
         startDateText = (EditText) getActivity().findViewById(R.id.eventStartDateText);
@@ -186,7 +185,7 @@ public class CreateEventFragment extends Fragment {
                 dateFormat = new SimpleDateFormat("yyyy/MM/dd");
                 try {
                     cal = Calendar.getInstance();
-                    cal.setTime(dateFormat.parse(startDateText.getText().toString()));
+                    cal.setTimeInMillis(dateFormat.parse(startDateText.getText().toString()).getTime());
                     cal.set(Calendar.HOUR, 0);
                     cal.set(Calendar.MINUTE, 0);
                 }
@@ -198,8 +197,8 @@ public class CreateEventFragment extends Fragment {
                 dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
                 try {
                     cal = Calendar.getInstance();
-                    cal.setTime(dateFormat.parse(startDateText.getText().toString() +
-                            startTimeText.getText().toString()));
+                    cal.setTimeInMillis(dateFormat.parse(startDateText.getText().toString() +
+                            startTimeText.getText().toString()).getTime());
                 } catch (ParseException e) {
                     Log.d(TAG, e.getMessage());
                 }
@@ -213,7 +212,7 @@ public class CreateEventFragment extends Fragment {
             if(endTimeText.getText().length() == 0) {
                 dateFormat = new SimpleDateFormat("yyyy/MM/dd");
                 try {
-                    cal.setTime(dateFormat.parse(endDateText.getText().toString()));
+                    cal.setTimeInMillis(dateFormat.parse(endDateText.getText().toString()).getTime());
                     cal.set(Calendar.HOUR, 0);
                     cal.set(Calendar.MINUTE, 0);
                 } catch (ParseException e) {
@@ -223,8 +222,8 @@ public class CreateEventFragment extends Fragment {
             else {
                 dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
                 try {
-                    cal.setTime(dateFormat.parse(endDateText.getText().toString() +
-                            endTimeText.getText().toString()));
+                    cal.setTimeInMillis(dateFormat.parse(endDateText.getText().toString() +
+                            endTimeText.getText().toString()).getTime());
                 } catch (ParseException e) {
                     Log.d(TAG, e.getMessage());
                 }
@@ -235,10 +234,7 @@ public class CreateEventFragment extends Fragment {
             if(endTimeText.getText().length() != 0) {
                 SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
                 try {
-                    Calendar tmpTime = Calendar.getInstance();
-                    tmpTime.setTime(dateFormat.parse(endTimeText.getText().toString()));
-                    cal.set(Calendar.HOUR, tmpTime.get(Calendar.HOUR));
-                    cal.set(Calendar.MINUTE, tmpTime.get(Calendar.MINUTE));
+                    cal.setTime(dateFormat.parse(endTimeText.getText().toString()));
                 } catch (ParseException e) {
                     Log.d(TAG, e.getMessage());
                 }

@@ -1,6 +1,8 @@
 package edu.csuchico.ecst.ahorgan.neighbor.Community;
 
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -44,6 +46,7 @@ public class EventRecyclerViewAdapter extends RecyclerView.Adapter<EventRecycler
     private LiveQuery mQuery;
     private Database db;
     com.couchbase.lite.View eventView;
+    final Handler mainThread = new Handler(Looper.getMainLooper());
 
     public EventRecyclerViewAdapter(List<Map<String, Object>> items, EventFragment.OnListFragmentInteractionListener listener) {
         Log.d(TAG, "MyProfileRecyclerViewAdapter()");
@@ -94,8 +97,7 @@ public class EventRecyclerViewAdapter extends RecyclerView.Adapter<EventRecycler
         Log.d(TAG, getItemCount() + " items");
 
         Map<String, Object> values = mValues.get(position);
-        if(!values.get(Event.OWNER).equals("me"))
-            holder.mOwnerView.setText((String)values.get(Event.OWNER));
+        holder.mOwnerView.setText((String)values.get(Event.OWNER));
         values.putAll(db.getDocument((String)values.get("_id")).getProperties());
 
         for ( Map.Entry entry : values.entrySet() ) {
@@ -107,7 +109,9 @@ public class EventRecyclerViewAdapter extends RecyclerView.Adapter<EventRecycler
         holder.mNameView.setText((String)values.get(Event.TITLE));
         holder.mLocationtView.setText((String)values.get(Event.LOCATION));
         holder.mDetailsView.setText((String)values.get(Event.DETAILS));
-        holder.mCheckBox.setChecked((Boolean)values.get(Event.BCAST));
+        boolean checked = values.get(Event.BCAST).equals(true) ||
+                values.get(Event.BCAST).equals("true");
+        holder.mCheckBox.setChecked(checked);
 
         holder.mItem = values;
 
@@ -116,8 +120,6 @@ public class EventRecyclerViewAdapter extends RecyclerView.Adapter<EventRecycler
             public boolean onLongClick(View v) {
                 if (null != mListener) {
                     db.deleteDocument(mValues.get(position).get("_id").toString());
-                    mValues.remove(position);
-                    notifyItemRemoved(position);
                 }
                 return false;
             }
@@ -150,29 +152,18 @@ public class EventRecyclerViewAdapter extends RecyclerView.Adapter<EventRecycler
 
     public void updateValues(LiveQuery.ChangeEvent event) {
         Log.d(TAG, "update values");
+        mValues.clear();
         QueryEnumerator results = event.getRows();
-        for (Iterator<QueryRow> it = results; it.hasNext();) {
-            QueryRow row = it.next();
-            Document doc = row.getDocument();
-            int index = mValues.indexOf(doc.getProperties());
-            if(index == -1 && !doc.isDeleted()) {
-                /*
-                    Item was inserted. Must find where item should be inserted
-                    since mValues is sorted by start date
-                 */
-                for(Map<String, Object> entry : mValues) {
-                    if(doc.getProperties().get(Event.STARTDATETIME).toString()
-                            .compareTo(entry.get(Event.STARTDATETIME).toString()) <= 0) {
-                        index = mValues.indexOf(entry);
-                        mValues.add(index, doc.getProperties());
-                        notifyItemInserted(index);
-                        break;
-                    }
-                }
-            }
-            else if(!mValues.get(index).equals(doc.getProperties()))
-                notifyItemChanged(index, doc.getProperties());
+        for(Iterator<QueryRow> it = results; it.hasNext();) {
+            Document document = it.next().getDocument();
+            mValues.add(document.getProperties());
         }
+        mainThread.post(new Runnable() {
+            @Override
+            public void run() {
+                notifyDataSetChanged();
+            }
+        });
     }
 
     @Override
